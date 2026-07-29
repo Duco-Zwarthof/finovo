@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import type { Transaction } from "@/lib/types";
 
-import RecentTransactions from "@/components/dashboard/RecentTransactions";
-import DashboardPanel from "@/components/dashboard/DashboardPanel";
-import StatCard from "@/components/dashboard/StatCard";
+import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import CashflowChart from "@/components/dashboard/CashflowChart";
+import DashboardPanel from "@/components/dashboard/DashboardPanel";
+import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import StatCard from "@/components/dashboard/StatCard";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -16,24 +18,35 @@ import {
   calculateSavings,
   formatCurrency,
 } from "@/lib/finance";
+
 import { sampleTransactions } from "@/lib/sample-transactions";
 
 export default function Home() {
   const [transactions, setTransactions] =
-    useState<Transaction[]>(sampleTransactions);
+    useState<Transaction[]>(
+      sampleTransactions
+    );
 
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasLoaded, setHasLoaded] =
+    useState(false);
+
+  const [
+    editingTransaction,
+    setEditingTransaction,
+  ] = useState<Transaction | null>(null);
 
   useEffect(() => {
-    const savedTransactions = localStorage.getItem(
-      "finovo-transactions"
-    );
+    const savedTransactions =
+      localStorage.getItem(
+        "finovo-transactions"
+      );
 
     if (savedTransactions) {
       try {
-        const parsedTransactions = JSON.parse(
-          savedTransactions
-        ) as Transaction[];
+        const parsedTransactions =
+          JSON.parse(
+            savedTransactions
+          ) as Transaction[];
 
         setTransactions(parsedTransactions);
       } catch (error) {
@@ -58,22 +71,58 @@ export default function Home() {
     );
   }, [transactions, hasLoaded]);
 
-  const monthlyIncome = calculateIncome(transactions);
-  const monthlyExpenses = calculateExpenses(transactions);
-  const monthlySavings = calculateSavings(transactions);
+  const monthlyIncome =
+    calculateIncome(transactions);
 
-  function handleAddTransaction(transaction: Transaction) {
-    setTransactions((currentTransactions) => [
-      transaction,
-      ...currentTransactions,
-    ]);
+  const monthlyExpenses =
+    calculateExpenses(transactions);
+
+  const monthlySavings =
+    calculateSavings(transactions);
+
+  function handleAddTransaction(
+    transaction: Transaction
+  ) {
+    setTransactions(
+      (currentTransactions) => [
+        transaction,
+        ...currentTransactions,
+      ]
+    );
   }
 
-  function handleDeleteTransaction(id: string) {
-    setTransactions((currentTransactions) =>
-      currentTransactions.filter(
-        (transaction) => transaction.id !== id
-      )
+  function handleEditTransaction(
+    transaction: Transaction
+  ) {
+    setEditingTransaction(transaction);
+  }
+
+  function handleSaveEditedTransaction(
+    updatedTransaction: Transaction
+  ) {
+    setTransactions(
+      (currentTransactions) =>
+        currentTransactions.map(
+          (transaction) =>
+            transaction.id ===
+            updatedTransaction.id
+              ? updatedTransaction
+              : transaction
+        )
+    );
+
+    setEditingTransaction(null);
+  }
+
+  function handleDeleteTransaction(
+    id: string
+  ) {
+    setTransactions(
+      (currentTransactions) =>
+        currentTransactions.filter(
+          (transaction) =>
+            transaction.id !== id
+        )
     );
   }
 
@@ -82,7 +131,11 @@ export default function Home() {
       <Sidebar />
 
       <section className="flex-1 p-10">
-        <Header onAddTransaction={handleAddTransaction} />
+        <Header
+          onAddTransaction={
+            handleAddTransaction
+          }
+        />
 
         <section className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
@@ -93,19 +146,25 @@ export default function Home() {
 
           <StatCard
             title="Monthly income"
-            value={formatCurrency(monthlyIncome)}
+            value={formatCurrency(
+              monthlyIncome
+            )}
             description="Income received this month"
           />
 
           <StatCard
             title="Monthly expenses"
-            value={formatCurrency(monthlyExpenses)}
+            value={formatCurrency(
+              monthlyExpenses
+            )}
             description="Expenses recorded this month"
           />
 
           <StatCard
             title="Monthly savings"
-            value={formatCurrency(monthlySavings)}
+            value={formatCurrency(
+              monthlySavings
+            )}
             description="Income minus expenses"
           />
         </section>
@@ -114,9 +173,11 @@ export default function Home() {
           <div className="xl:col-span-2">
             <DashboardPanel
               title="Monthly cash flow"
-              description="Income and expenses during the current month"
+              description="Income and expenses over the last six months"
             >
-              <CashflowChart />
+              <CashflowChart
+                transactions={transactions}
+              />
             </DashboardPanel>
           </div>
 
@@ -126,7 +187,9 @@ export default function Home() {
           >
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-3xl font-bold">£11,000</p>
+                <p className="text-3xl font-bold">
+                  £11,000
+                </p>
 
                 <p className="mt-1 text-sm text-zinc-500">
                   of £30,000 saved
@@ -151,10 +214,27 @@ export default function Home() {
         <section className="mt-6">
           <RecentTransactions
             transactions={transactions}
-            onDeleteTransaction={handleDeleteTransaction}
+            onEditTransaction={
+              handleEditTransaction
+            }
+            onDeleteTransaction={
+              handleDeleteTransaction
+            }
           />
         </section>
       </section>
+
+      {editingTransaction && (
+        <AddTransactionModal
+          transaction={editingTransaction}
+          onClose={() =>
+            setEditingTransaction(null)
+          }
+          onSave={
+            handleSaveEditedTransaction
+          }
+        />
+      )}
     </main>
   );
 }

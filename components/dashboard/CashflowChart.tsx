@@ -11,24 +11,76 @@ import {
   YAxis,
 } from "recharts";
 
-const cashflowData = [
-  { month: "Feb", income: 2750, expenses: 1840 },
-  { month: "Mar", income: 2900, expenses: 2010 },
-  { month: "Apr", income: 3100, expenses: 1930 },
-  { month: "May", income: 3050, expenses: 2210 },
-  { month: "Jun", income: 3200, expenses: 2070 },
-  { month: "Jul", income: 3150, expenses: 1982 },
-];
+import type { Transaction } from "@/lib/types";
+import { formatCurrency } from "@/lib/finance";
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: 0,
-  }).format(value);
+type CashflowChartProps = {
+  transactions: Transaction[];
+};
+
+type CashflowDataPoint = {
+  month: string;
+  income: number;
+  expenses: number;
+};
+
+const monthFormatter = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+});
+
+function createCashflowData(
+  transactions: Transaction[]
+): CashflowDataPoint[] {
+  const now = new Date();
+
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(
+      now.getFullYear(),
+      now.getMonth() - 5 + index,
+      1
+    );
+
+    return {
+      year: date.getFullYear(),
+      monthIndex: date.getMonth(),
+      label: monthFormatter.format(date),
+      income: 0,
+      expenses: 0,
+    };
+  });
+
+  transactions.forEach((transaction) => {
+    const transactionDate = new Date(transaction.date);
+
+    const matchingMonth = months.find(
+      (month) =>
+        month.year === transactionDate.getFullYear() &&
+        month.monthIndex === transactionDate.getMonth()
+    );
+
+    if (!matchingMonth) {
+      return;
+    }
+
+    if (transaction.type === "income") {
+      matchingMonth.income += transaction.amount;
+    } else {
+      matchingMonth.expenses += transaction.amount;
+    }
+  });
+
+  return months.map((month) => ({
+    month: month.label,
+    income: month.income,
+    expenses: month.expenses,
+  }));
 }
 
-export default function CashflowChart() {
+export default function CashflowChart({
+  transactions,
+}: CashflowChartProps) {
+  const cashflowData = createCashflowData(transactions);
+
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -53,7 +105,15 @@ export default function CashflowChart() {
             axisLine={false}
             tickLine={false}
             tick={{ fill: "#71717a", fontSize: 12 }}
-            tickFormatter={(value) => `£${value / 1000}k`}
+            tickFormatter={(value) => {
+              const amount = Number(value);
+
+              if (amount >= 1000) {
+                return `£${amount / 1000}k`;
+              }
+
+              return `£${amount}`;
+            }}
           />
 
           <Tooltip

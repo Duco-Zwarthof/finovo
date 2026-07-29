@@ -1,18 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Search, UserCircle2 } from "lucide-react";
+import {
+  Bell,
+  Search,
+  UserCircle2,
+} from "lucide-react";
+
 import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import type { Transaction } from "@/lib/types";
 
 type HeaderProps = {
-  onAddTransaction: (transaction: Transaction) => void;
+  onAddTransaction: (
+    transaction: Transaction
+  ) => void;
 };
 
 export default function Header({
   onAddTransaction,
 }: HeaderProps) {
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] =
+    useState(false);
 
   return (
     <header className="mb-10 flex items-start justify-between">
@@ -41,6 +49,7 @@ export default function Header({
 
         <button
           type="button"
+          aria-label="Search"
           className="rounded-xl border border-white/10 bg-zinc-900 p-3 transition hover:border-blue-500"
         >
           <Search size={20} />
@@ -48,6 +57,7 @@ export default function Header({
 
         <button
           type="button"
+          aria-label="Notifications"
           className="rounded-xl border border-white/10 bg-zinc-900 p-3 transition hover:border-blue-500"
         >
           <Bell size={20} />
@@ -55,6 +65,7 @@ export default function Header({
 
         <button
           type="button"
+          aria-label="Profile"
           className="rounded-xl border border-white/10 bg-zinc-900 p-2 transition hover:border-blue-500"
         >
           <UserCircle2 size={28} />

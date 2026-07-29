@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { X } from "lucide-react";
+
 import type {
   Transaction,
   TransactionCategory,
@@ -11,6 +12,7 @@ import type {
 type AddTransactionModalProps = {
   onClose: () => void;
   onSave: (transaction: Transaction) => void;
+  transaction?: Transaction;
 };
 
 const incomeCategories: TransactionCategory[] = [
@@ -32,28 +34,55 @@ const expenseCategories: TransactionCategory[] = [
 export default function AddTransactionModal({
   onClose,
   onSave,
+  transaction,
 }: AddTransactionModalProps) {
-  const [type, setType] = useState<TransactionType>("expense");
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
+  const isEditing = Boolean(transaction);
+
+  const [type, setType] = useState<TransactionType>(
+    transaction?.type ?? "expense"
+  );
+
+  const [title, setTitle] = useState(
+    transaction?.title ?? ""
+  );
+
+  const [amount, setAmount] = useState(
+    transaction ? String(transaction.amount) : ""
+  );
+
   const [category, setCategory] =
-    useState<TransactionCategory>("Groceries");
+    useState<TransactionCategory>(
+      transaction?.category ?? "Groceries"
+    );
+
   const [date, setDate] = useState(
-    new Date().toISOString().split("T")[0]
+    transaction?.date ??
+      new Date().toISOString().split("T")[0]
   );
 
   const categories =
-    type === "income" ? incomeCategories : expenseCategories;
+    type === "income"
+      ? incomeCategories
+      : expenseCategories;
 
   function selectType(newType: TransactionType) {
     setType(newType);
 
-    setCategory(
-      newType === "income" ? "Salary" : "Groceries"
-    );
+    const availableCategories =
+      newType === "income"
+        ? incomeCategories
+        : expenseCategories;
+
+    if (!availableCategories.includes(category)) {
+      setCategory(
+        newType === "income" ? "Salary" : "Groceries"
+      );
+    }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     const numericAmount = Number(amount);
@@ -62,8 +91,8 @@ export default function AddTransactionModal({
       return;
     }
 
-    const newTransaction: Transaction = {
-      id: crypto.randomUUID(),
+    const savedTransaction: Transaction = {
+      id: transaction?.id ?? crypto.randomUUID(),
       title: title.trim(),
       amount: numericAmount,
       type,
@@ -71,7 +100,7 @@ export default function AddTransactionModal({
       date,
     };
 
-    onSave(newTransaction);
+    onSave(savedTransaction);
   }
 
   return (
@@ -81,16 +110,22 @@ export default function AddTransactionModal({
     >
       <div
         className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-7 shadow-2xl"
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) =>
+          event.stopPropagation()
+        }
       >
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold">
-              Add transaction
+              {isEditing
+                ? "Edit transaction"
+                : "Add transaction"}
             </h2>
 
             <p className="mt-1 text-sm text-zinc-400">
-              Record new income or an expense.
+              {isEditing
+                ? "Update the transaction details."
+                : "Record new income or an expense."}
             </p>
           </div>
 
@@ -104,7 +139,10 @@ export default function AddTransactionModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-7 space-y-5"
+        >
           <div className="grid grid-cols-2 rounded-xl bg-zinc-950 p-1">
             <button
               type="button"
@@ -143,7 +181,9 @@ export default function AddTransactionModal({
               id="transaction-title"
               type="text"
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) =>
+                setTitle(event.target.value)
+              }
               placeholder={
                 type === "income"
                   ? "For example: Monthly salary"
@@ -173,7 +213,9 @@ export default function AddTransactionModal({
                 min="0.01"
                 step="0.01"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) =>
+                  setAmount(event.target.value)
+                }
                 placeholder="0.00"
                 required
                 className="w-full rounded-r-xl bg-transparent px-4 py-3 outline-none placeholder:text-zinc-600"
@@ -194,7 +236,8 @@ export default function AddTransactionModal({
               value={category}
               onChange={(event) =>
                 setCategory(
-                  event.target.value as TransactionCategory
+                  event.target
+                    .value as TransactionCategory
                 )
               }
               className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 outline-none transition focus:border-blue-500"
@@ -222,7 +265,9 @@ export default function AddTransactionModal({
               id="transaction-date"
               type="date"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) =>
+                setDate(event.target.value)
+              }
               required
               className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 outline-none transition focus:border-blue-500"
             />
@@ -241,7 +286,9 @@ export default function AddTransactionModal({
               type="submit"
               className="flex-1 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500"
             >
-              Save transaction
+              {isEditing
+                ? "Save changes"
+                : "Save transaction"}
             </button>
           </div>
         </form>
