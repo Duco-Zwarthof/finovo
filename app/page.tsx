@@ -1,8 +1,15 @@
+"use client";
+
+import { useState } from "react";
+import type { Transaction } from "@/lib/types";
+
+import TransactionList from "@/components/dashboard/components/dashboard/RecentTransactions";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import StatCard from "@/components/dashboard/StatCard";
+import CashflowChart from "@/components/dashboard/CashflowChart";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
-import CashflowChart from "@/components/dashboard/CashflowChart";
+
 import {
   calculateExpenses,
   calculateIncome,
@@ -12,12 +19,26 @@ import {
 import { sampleTransactions } from "@/lib/sample-transactions";
 
 export default function Home() {
+  const [transactions, setTransactions] =
+    useState<Transaction[]>(sampleTransactions);
+
+  const monthlyIncome = calculateIncome(transactions);
+  const monthlyExpenses = calculateExpenses(transactions);
+  const monthlySavings = calculateSavings(transactions);
+
+  function handleAddTransaction(transaction: Transaction) {
+    setTransactions((currentTransactions) => [
+      transaction,
+      ...currentTransactions,
+    ]);
+  }
+
   return (
     <main className="flex min-h-screen bg-zinc-950 text-white">
       <Sidebar />
 
       <section className="flex-1 p-10">
-        <Header />
+        <Header onAddTransaction={handleAddTransaction} />
 
         <section className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
@@ -28,19 +49,19 @@ export default function Home() {
 
           <StatCard
             title="Monthly income"
-            value="£3,150"
+            value={formatCurrency(monthlyIncome)}
             description="Income received this month"
           />
 
           <StatCard
             title="Monthly expenses"
-            value="£1,982"
+            value={formatCurrency(monthlyExpenses)}
             description="Expenses recorded this month"
           />
 
           <StatCard
             title="Monthly savings"
-            value="£1,168"
+            value={formatCurrency(monthlySavings)}
             description="Income minus expenses"
           />
         </section>
@@ -53,6 +74,7 @@ export default function Home() {
             >
               <CashflowChart />
             </DashboardPanel>
+            
           </div>
 
           <DashboardPanel
@@ -62,12 +84,15 @@ export default function Home() {
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-3xl font-bold">£11,000</p>
+
                 <p className="mt-1 text-sm text-zinc-500">
                   of £30,000 saved
                 </p>
               </div>
 
-              <p className="text-sm font-semibold text-blue-500">37%</p>
+              <p className="text-sm font-semibold text-blue-500">
+                37%
+              </p>
             </div>
 
             <div className="mt-6 h-3 overflow-hidden rounded-full bg-zinc-800">
@@ -78,6 +103,10 @@ export default function Home() {
               £19,000 remaining
             </p>
           </DashboardPanel>
+                </section>
+
+        <section className="mt-6">
+          <TransactionList transactions={transactions} />
         </section>
       </section>
     </main>
