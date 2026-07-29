@@ -1,6 +1,15 @@
-import DashboardPanel from "@/components/DashboardPanel";
-import Sidebar from "@/components/Sidebar";
-import StatCard from "@/components/StatCard";
+import DashboardPanel from "@/components/dashboard/DashboardPanel";
+import StatCard from "@/components/dashboard/StatCard";
+import Header from "@/components/layout/Header";
+import Sidebar from "@/components/layout/Sidebar";
+import CashflowChart from "@/components/dashboard/CashflowChart";
+import {
+  calculateExpenses,
+  calculateIncome,
+  calculateSavings,
+  formatCurrency,
+} from "@/lib/finance";
+import { sampleTransactions } from "@/lib/sample-transactions";
 
 export default function Home() {
   return (
@@ -8,19 +17,7 @@ export default function Home() {
       <Sidebar />
 
       <section className="flex-1 p-10">
-        <header>
-          <p className="text-sm font-medium text-blue-500">
-            Tuesday, 29 July
-          </p>
-
-          <h2 className="mt-2 text-4xl font-bold">
-            Welcome back, Duco 👋
-          </h2>
-
-          <p className="mt-2 text-zinc-400">
-            Here is your financial overview.
-          </p>
-        </header>
+        <Header />
 
         <section className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
@@ -54,11 +51,7 @@ export default function Home() {
               title="Monthly cash flow"
               description="Income and expenses during the current month"
             >
-              <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-950">
-                <p className="text-sm text-zinc-500">
-                  Cash-flow chart coming soon
-                </p>
-              </div>
+              <CashflowChart />
             </DashboardPanel>
           </div>
 

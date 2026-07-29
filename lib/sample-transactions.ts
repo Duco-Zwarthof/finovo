@@ -1,0 +1,60 @@
+import type { Transaction } from "@/lib/types";
+
+export const sampleTransactions: Transaction[] = [
+  {
+    id: "transaction-1",
+    title: "Monthly salary",
+    amount: 3150,
+    type: "income",
+    category: "Salary",
+    date: "2026-07-25",
+  },
+  {
+    id: "transaction-2",
+    title: "Rent",
+    amount: 850,
+    type: "expense",
+    category: "Housing",
+    date: "2026-07-01",
+  },
+  {
+    id: "transaction-3",
+    title: "Groceries",
+    amount: 342,
+    type: "expense",
+    category: "Groceries",
+    date: "2026-07-12",
+  },
+  {
+    id: "transaction-4",
+    title: "Transport",
+    amount: 190,
+    type: "expense",
+    category: "Transport",
+    date: "2026-07-15",
+  },
+  {
+    id: "transaction-5",
+    title: "Entertainment",
+    amount: 280,
+    type: "expense",
+    category: "Entertainment",
+    date: "2026-07-19",
+  },
+  {
+    id: "transaction-6",
+    title: "Subscriptions",
+    amount: 120,
+    type: "expense",
+    category: "Subscriptions",
+    date: "2026-07-22",
+  },
+  {
+    id: "transaction-7",
+    title: "Other expenses",
+    amount: 200,
+    type: "expense",
+    category: "Other",
+    date: "2026-07-27",
+  },
+];
