@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Transaction } from "@/lib/types";
-
-import TransactionList from "@/components/dashboard/components/dashboard/RecentTransactions";
+import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import StatCard from "@/components/dashboard/StatCard";
 import CashflowChart from "@/components/dashboard/CashflowChart";
@@ -20,7 +19,43 @@ import { sampleTransactions } from "@/lib/sample-transactions";
 
 export default function Home() {
   const [transactions, setTransactions] =
-    useState<Transaction[]>(sampleTransactions);
+  useState<Transaction[]>(sampleTransactions);
+
+const [hasLoaded, setHasLoaded] = useState(false);
+
+useEffect(() => {
+  const savedTransactions = localStorage.getItem(
+    "finovo-transactions"
+  );
+
+  if (savedTransactions) {
+    try {
+      const parsedTransactions = JSON.parse(
+        savedTransactions
+      ) as Transaction[];
+
+      setTransactions(parsedTransactions);
+    } catch (error) {
+      console.error(
+        "Could not load saved transactions:",
+        error
+      );
+    }
+  }
+
+  setHasLoaded(true);
+}, []);
+
+useEffect(() => {
+  if (!hasLoaded) {
+    return;
+  }
+
+  localStorage.setItem(
+    "finovo-transactions",
+    JSON.stringify(transactions)
+  );
+}, [transactions, hasLoaded]);
 
   const monthlyIncome = calculateIncome(transactions);
   const monthlyExpenses = calculateExpenses(transactions);
@@ -106,8 +141,8 @@ export default function Home() {
                 </section>
 
         <section className="mt-6">
-          <TransactionList transactions={transactions} />
-        </section>
+  <RecentTransactions transactions={transactions} />
+</section>
       </section>
     </main>
   );
