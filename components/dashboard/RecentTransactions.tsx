@@ -3,10 +3,12 @@ import { formatCurrency } from "@/lib/finance";
 
 type RecentTransactionsProps = {
   transactions: Transaction[];
+  onDeleteTransaction: (id: string) => void;
 };
 
 export default function RecentTransactions({
   transactions,
+  onDeleteTransaction,
 }: RecentTransactionsProps) {
   return (
     <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6">
@@ -26,16 +28,29 @@ export default function RecentTransactions({
               </p>
             </div>
 
-            <p
-              className={`font-semibold ${
-                transaction.type === "income"
-                  ? "text-green-500"
-                  : "text-red-500"
-              }`}
-            >
-              {transaction.type === "income" ? "+" : "-"}
-              {formatCurrency(transaction.amount)}
-            </p>
+            <div className="flex items-center gap-4">
+              <p
+                className={`font-semibold ${
+                  transaction.type === "income"
+                    ? "text-green-500"
+                    : "text-red-500"
+                }`}
+              >
+                {transaction.type === "income" ? "+" : "-"}
+                {formatCurrency(transaction.amount)}
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  onDeleteTransaction(transaction.id)
+                }
+                className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/20"
+                aria-label={`Delete ${transaction.title}`}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>

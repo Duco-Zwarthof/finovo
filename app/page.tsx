@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Transaction } from "@/lib/types";
+
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import StatCard from "@/components/dashboard/StatCard";
@@ -19,43 +20,43 @@ import { sampleTransactions } from "@/lib/sample-transactions";
 
 export default function Home() {
   const [transactions, setTransactions] =
-  useState<Transaction[]>(sampleTransactions);
+    useState<Transaction[]>(sampleTransactions);
 
-const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-useEffect(() => {
-  const savedTransactions = localStorage.getItem(
-    "finovo-transactions"
-  );
+  useEffect(() => {
+    const savedTransactions = localStorage.getItem(
+      "finovo-transactions"
+    );
 
-  if (savedTransactions) {
-    try {
-      const parsedTransactions = JSON.parse(
-        savedTransactions
-      ) as Transaction[];
+    if (savedTransactions) {
+      try {
+        const parsedTransactions = JSON.parse(
+          savedTransactions
+        ) as Transaction[];
 
-      setTransactions(parsedTransactions);
-    } catch (error) {
-      console.error(
-        "Could not load saved transactions:",
-        error
-      );
+        setTransactions(parsedTransactions);
+      } catch (error) {
+        console.error(
+          "Could not load saved transactions:",
+          error
+        );
+      }
     }
-  }
 
-  setHasLoaded(true);
-}, []);
+    setHasLoaded(true);
+  }, []);
 
-useEffect(() => {
-  if (!hasLoaded) {
-    return;
-  }
+  useEffect(() => {
+    if (!hasLoaded) {
+      return;
+    }
 
-  localStorage.setItem(
-    "finovo-transactions",
-    JSON.stringify(transactions)
-  );
-}, [transactions, hasLoaded]);
+    localStorage.setItem(
+      "finovo-transactions",
+      JSON.stringify(transactions)
+    );
+  }, [transactions, hasLoaded]);
 
   const monthlyIncome = calculateIncome(transactions);
   const monthlyExpenses = calculateExpenses(transactions);
@@ -66,6 +67,14 @@ useEffect(() => {
       transaction,
       ...currentTransactions,
     ]);
+  }
+
+  function handleDeleteTransaction(id: string) {
+    setTransactions((currentTransactions) =>
+      currentTransactions.filter(
+        (transaction) => transaction.id !== id
+      )
+    );
   }
 
   return (
@@ -109,7 +118,6 @@ useEffect(() => {
             >
               <CashflowChart />
             </DashboardPanel>
-            
           </div>
 
           <DashboardPanel
@@ -138,11 +146,14 @@ useEffect(() => {
               £19,000 remaining
             </p>
           </DashboardPanel>
-                </section>
+        </section>
 
         <section className="mt-6">
-  <RecentTransactions transactions={transactions} />
-</section>
+          <RecentTransactions
+            transactions={transactions}
+            onDeleteTransaction={handleDeleteTransaction}
+          />
+        </section>
       </section>
     </main>
   );
