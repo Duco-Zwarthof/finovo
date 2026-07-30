@@ -38,6 +38,14 @@ Purpose:
 
 Provide a complete overview of the user's financial situation.
 
+Implemented functionality:
+
+- Current-calendar-month income summary
+- Current-calendar-month expense summary
+- Monthly surplus and surplus rate
+- Transaction-driven financial summaries
+- Consistent EUR presentation with two decimal places
+
 Planned functionality:
 
 - Custom dashboard
@@ -136,7 +144,7 @@ Summarize the user's financial situation.
 
 Potential metrics:
 
-- Savings rate
+- Surplus rate
 - Emergency fund
 - Investment growth
 - Cash flow

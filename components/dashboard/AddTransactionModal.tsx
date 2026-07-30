@@ -8,6 +8,8 @@ import type {
   TransactionCategory,
   TransactionType,
 } from "@/lib/types";
+import { formatLocalDate, parseLocalDate } from "@/lib/date";
+import { CURRENCY_SYMBOL } from "@/lib/money";
 
 type AddTransactionModalProps = {
   onClose: () => void;
@@ -57,7 +59,7 @@ export default function AddTransactionModal({
 
   const [date, setDate] = useState(
     transaction?.date ??
-      new Date().toISOString().split("T")[0]
+      formatLocalDate(new Date())
   );
 
   const categories =
@@ -87,7 +89,11 @@ export default function AddTransactionModal({
 
     const numericAmount = Number(amount);
 
-    if (!title.trim() || numericAmount <= 0 || !date) {
+    if (
+      !title.trim() ||
+      numericAmount <= 0 ||
+      !parseLocalDate(date)
+    ) {
       return;
     }
 
@@ -204,7 +210,7 @@ export default function AddTransactionModal({
 
             <div className="flex rounded-xl border border-white/10 bg-zinc-950 focus-within:border-blue-500">
               <span className="flex items-center border-r border-white/10 px-4 text-zinc-400">
-                £
+                {CURRENCY_SYMBOL}
               </span>
 
               <input

@@ -42,7 +42,7 @@ export default function StatCard({
           />
         );
 
-      case "Monthly savings":
+      case "Monthly surplus":
         return (
           <PiggyBank
             className="text-yellow-400"

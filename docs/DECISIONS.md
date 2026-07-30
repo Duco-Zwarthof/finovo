@@ -110,6 +110,46 @@ Finovo focuses on clarity instead of overwhelming users with data.
 
 ---
 
+# Decision 007 — Calendar-Month Reporting and Surplus Terminology
+
+**Status:** Accepted
+
+## Decision
+
+Dashboard summaries labelled as monthly use the user's current local calendar month. Income minus expenses is called monthly surplus, and its percentage of monthly income is called the surplus rate.
+
+Savings contributions, savings balances and savings goals remain separate concepts. The persisted dashboard widget key `monthlySavings` is retained temporarily for storage compatibility and is not product terminology.
+
+## Reason
+
+- Monthly summaries must have a precise and predictable reporting period.
+- Date-only transactions should not change day or month because of UTC conversion.
+- Surplus describes a period calculation without implying that the amount was transferred to savings.
+- Retaining the existing widget key avoids an unplanned storage migration.
+
+---
+
+# Decision 008 — EUR Presentation Formatting
+
+**Status:** Accepted
+
+## Decision
+
+Finovo presents every monetary value in EUR. The shared money utility uses the `en-IE` locale so the English interface has consistent euro symbols, grouping and decimal punctuation.
+
+Normal monetary values always show exactly two decimal places. Compact EUR formatting is used only for chart axes, while chart tooltips and all other monetary values remain exact.
+
+This is a presentation decision only. It does not introduce multi-currency support or change transaction amounts, calculations or storage schemas.
+
+## Reason
+
+- EUR is Finovo's first and only presentation currency for the current MVP.
+- `en-IE` combines an English-language presentation with native EUR formatting.
+- One shared utility prevents currency symbols and decimal precision from drifting between widgets and components.
+- Keeping presentation separate avoids coupling a UI change to future money-model or storage work.
+
+---
+
 # Future Decisions
 
 Every significant decision should be added here using the same format.

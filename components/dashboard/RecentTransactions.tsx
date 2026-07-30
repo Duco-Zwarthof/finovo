@@ -29,7 +29,14 @@ import type {
   TransactionCategory,
 } from "@/lib/types";
 
-import { formatCurrency } from "@/lib/finance";
+import {
+  getLocalCalendarMonthKey,
+  parseLocalDate,
+} from "@/lib/date";
+import {
+  CURRENCY_SYMBOL,
+  formatCurrency,
+} from "@/lib/money";
 
 type RecentTransactionsProps = {
   transactions: Transaction[];
@@ -76,19 +83,10 @@ const monthFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-function parseTransactionDate(date: string) {
-  const [year, month, day] = date
-    .split("-")
-    .map(Number);
-
-  return new Date(year, month - 1, day);
-}
-
 function formatTransactionDate(date: string) {
-  const transactionDate =
-    parseTransactionDate(date);
+  const transactionDate = parseLocalDate(date);
 
-  if (Number.isNaN(transactionDate.getTime())) {
+  if (!transactionDate) {
     return date;
   }
 
@@ -96,22 +94,13 @@ function formatTransactionDate(date: string) {
 }
 
 function formatMonthValue(monthValue: string) {
-  const [year, month] = monthValue
-    .split("-")
-    .map(Number);
+  const monthDate = parseLocalDate(`${monthValue}-01`);
 
-  if (
-    !year ||
-    !month ||
-    month < 1 ||
-    month > 12
-  ) {
+  if (!monthDate) {
     return monthValue;
   }
 
-  return monthFormatter.format(
-    new Date(year, month - 1, 1)
-  );
+  return monthFormatter.format(monthDate);
 }
 
 function createMonthOptions(
@@ -120,14 +109,15 @@ function createMonthOptions(
   const uniqueMonths = Array.from(
     new Set(
       transactions
-        .map((transaction) =>
-          transaction.date.slice(0, 7)
-        )
-        .filter((monthValue) =>
-          /^\d{4}-(0[1-9]|1[0-2])$/.test(
-            monthValue
-          )
-        )
+        .flatMap((transaction) => {
+          const transactionMonth = getLocalCalendarMonthKey(
+            transaction.date
+          );
+
+          return transactionMonth
+            ? [transactionMonth]
+            : [];
+        })
     )
   ).sort((firstMonth, secondMonth) =>
     secondMonth.localeCompare(firstMonth)
@@ -263,7 +253,7 @@ export default function RecentTransactions({
     const filtered = transactions.filter(
       (transaction) => {
         const transactionMonth =
-          transaction.date.slice(0, 7);
+          getLocalCalendarMonthKey(transaction.date);
 
         const matchesSearch =
           normalizedSearch === "" ||
@@ -279,9 +269,10 @@ export default function RecentTransactions({
 
         const matchesMonth =
           selectedMonths.length === 0 ||
-          selectedMonths.includes(
-            transactionMonth
-          );
+          (transactionMonth !== null &&
+            selectedMonths.includes(
+              transactionMonth
+            ));
 
         const matchesCategory =
           selectedCategories.length === 0 ||
@@ -795,7 +786,7 @@ export default function RecentTransactions({
 
               <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 focus-within:border-blue-500/50">
                 <span className="text-sm text-zinc-500">
-                  €
+                  {CURRENCY_SYMBOL}
                 </span>
 
                 <input
@@ -808,7 +799,7 @@ export default function RecentTransactions({
                       event.target.value
                     )
                   }
-                  placeholder="0"
+                  placeholder="0.00"
                   className="w-full bg-transparent px-2 py-2.5 text-sm text-white outline-none placeholder:text-zinc-600"
                 />
               </div>
@@ -821,7 +812,7 @@ export default function RecentTransactions({
 
               <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 focus-within:border-blue-500/50">
                 <span className="text-sm text-zinc-500">
-                  €
+                  {CURRENCY_SYMBOL}
                 </span>
 
                 <input
@@ -912,7 +903,7 @@ export default function RecentTransactions({
                   }
                   className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
                 >
-                  Min €{minimumAmount}
+                  Min {formatCurrency(Number(minimumAmount))}
                   <X size={12} />
                 </button>
               )}
@@ -925,7 +916,7 @@ export default function RecentTransactions({
                   }
                   className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
                 >
-                  Max €{maximumAmount}
+                  Max {formatCurrency(Number(maximumAmount))}
                   <X size={12} />
                 </button>
               )}
@@ -1054,12 +1045,12 @@ export default function RecentTransactions({
                             : "text-white"
                         }`}
                       >
-                        {transaction.type ===
-                        "income"
-                          ? "+"
-                          : "-"}
                         {formatCurrency(
-                          transaction.amount
+                          transaction.type ===
+                          "income"
+                            ? transaction.amount
+                            : -transaction.amount,
+                          { showSign: true }
                         )}
                       </p>
 

@@ -13,7 +13,11 @@ import {
 } from "recharts";
 
 import type { Transaction } from "@/lib/types";
-import { formatCurrency } from "@/lib/finance";
+import { parseLocalDate } from "@/lib/date";
+import {
+  formatCompactCurrency,
+  formatCurrency,
+} from "@/lib/money";
 
 type CashflowChartProps = {
   transactions: Transaction[];
@@ -49,12 +53,6 @@ const fullMonthFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-function parseTransactionDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-
-  return new Date(year, month - 1, day);
-}
-
 function createMonthlyCashflowData(
   transactions: Transaction[],
   monthCount: number
@@ -82,9 +80,13 @@ function createMonthlyCashflowData(
   );
 
   transactions.forEach((transaction) => {
-    const transactionDate = parseTransactionDate(
+    const transactionDate = parseLocalDate(
       transaction.date
     );
+
+    if (!transactionDate) {
+      return;
+    }
 
     const matchingMonth = months.find(
       (month) =>
@@ -147,9 +149,13 @@ function createQuarterlyCashflowData(
   ];
 
   transactions.forEach((transaction) => {
-    const transactionDate = parseTransactionDate(
+    const transactionDate = parseLocalDate(
       transaction.date
     );
+
+    if (!transactionDate) {
+      return;
+    }
 
     if (transactionDate.getFullYear() !== selectedYear) {
       return;
@@ -184,9 +190,16 @@ function createQuarterlyCashflowData(
 function getAvailableYears(
   transactions: Transaction[]
 ): number[] {
-  const transactionYears = transactions.map(
-    (transaction) =>
-      parseTransactionDate(transaction.date).getFullYear()
+  const transactionYears = transactions.flatMap(
+    (transaction) => {
+      const transactionDate = parseLocalDate(
+        transaction.date
+      );
+
+      return transactionDate
+        ? [transactionDate.getFullYear()]
+        : [];
+    }
   );
 
   const currentYear = new Date().getFullYear();
@@ -194,24 +207,6 @@ function getAvailableYears(
   return Array.from(
     new Set([...transactionYears, currentYear])
   ).sort((a, b) => b - a);
-}
-
-function formatAxisValue(value: number) {
-  if (value >= 1_000_000) {
-    return `£${(value / 1_000_000).toFixed(1)}m`;
-  }
-
-  if (value >= 1000) {
-    const thousands = value / 1000;
-
-    return `£${
-      Number.isInteger(thousands)
-        ? thousands
-        : thousands.toFixed(1)
-    }k`;
-  }
-
-  return `£${value}`;
 }
 
 function CustomTooltip({
@@ -497,7 +492,7 @@ export default function CashflowChart({
                   fill: "#71717a",
                   fontSize: 12,
                 }}
-                tickFormatter={formatAxisValue}
+                tickFormatter={formatCompactCurrency}
                 width={56}
               />
 

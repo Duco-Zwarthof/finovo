@@ -224,10 +224,37 @@ Instead create reusable functions.
 Examples:
 
 - compound interest
-- savings rate
+- surplus rate
 - investment growth
 - budget calculations
 - financial health score
+
+## Current Monthly Summary
+
+Current-month reporting is implemented with two pure utility boundaries:
+
+- `lib/date.ts` strictly parses and formats local `YYYY-MM-DD` calendar dates and determines calendar-month membership.
+- `lib/finance.ts` aggregates current-month income and expenses, then derives monthly surplus and surplus rate.
+
+UI components consume these results and do not define their own date parsers or monthly financial formulas. A reference date can be supplied to the financial summary function so reporting-period behavior remains deterministic in tests.
+
+Invalid or impossible transaction dates are excluded from date-based summaries and chart groupings rather than normalized into another date.
+
+## Currency Presentation
+
+Currency presentation is centralized in `lib/money.ts` and remains separate from financial calculations.
+
+- All normal monetary values use EUR with the `en-IE` locale and exactly two decimal places.
+- Compact EUR formatting is reserved for chart axes; cards, transactions, filters, prose and chart tooltips use exact formatting.
+- Editable amount fields use the currency symbol derived by the shared formatter while retaining their existing numeric input values.
+
+This boundary changes presentation only. Transaction amounts remain numbers in the existing transaction and storage schemas.
+
+---
+
+# Testing
+
+Focused pure utility tests are colocated in `lib/*.test.ts` and run with Vitest in a Node environment. Financial and calendar behavior should use injected reference dates instead of depending on the machine clock.
 
 ---
 

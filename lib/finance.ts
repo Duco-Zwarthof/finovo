@@ -1,25 +1,43 @@
-import type { Transaction } from "@/lib/types";
+import { isInLocalCalendarMonth } from "./date";
+import type { Transaction } from "./types";
 
-export function calculateIncome(transactions: Transaction[]) {
-  return transactions
-    .filter((transaction) => transaction.type === "income")
-    .reduce((total, transaction) => total + transaction.amount, 0);
-}
+export type MonthlyFinancialSummary = {
+  income: number;
+  expenses: number;
+  surplus: number;
+  surplusRate: number | null;
+};
 
-export function calculateExpenses(transactions: Transaction[]) {
-  return transactions
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((total, transaction) => total + transaction.amount, 0);
-}
+export function calculateMonthlyFinancialSummary(
+  transactions: Transaction[],
+  referenceDate: Date
+): MonthlyFinancialSummary {
+  let income = 0;
+  let expenses = 0;
 
-export function calculateSavings(transactions: Transaction[]) {
-  return calculateIncome(transactions) - calculateExpenses(transactions);
-}
+  transactions.forEach((transaction) => {
+    if (
+      !isInLocalCalendarMonth(transaction.date, referenceDate)
+    ) {
+      return;
+    }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: 0,
-  }).format(amount);
+    if (transaction.type === "income") {
+      income += transaction.amount;
+    } else {
+      expenses += transaction.amount;
+    }
+  });
+
+  const surplus = income - expenses;
+
+  return {
+    income,
+    expenses,
+    surplus,
+    surplusRate:
+      income === 0
+        ? null
+        : (surplus / income) * 100,
+  };
 }

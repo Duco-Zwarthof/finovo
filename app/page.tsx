@@ -35,11 +35,9 @@ import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 
 import {
-  calculateExpenses,
-  calculateIncome,
-  calculateSavings,
-  formatCurrency,
+  calculateMonthlyFinancialSummary,
 } from "@/lib/finance";
+import { formatCurrency } from "@/lib/money";
 
 import { sampleTransactions } from "@/lib/sample-transactions";
 
@@ -101,7 +99,7 @@ const widgetOptions: {
   },
   {
     key: "monthlySavings",
-    title: "Monthly savings",
+    title: "Monthly surplus",
     description: "Your income minus your expenses.",
   },
   {
@@ -391,6 +389,27 @@ function isWidgetId(value: string): value is WidgetId {
   return widgetOptions.some((widget) => widget.key === value);
 }
 
+function getWidgetTitle(widgetId: WidgetId) {
+  return (
+    widgetOptions.find((widget) => widget.key === widgetId)
+      ?.title ?? widgetId
+  );
+}
+
+function formatSurplusRate(rate: number | null) {
+  if (rate === null) {
+    return "Not available";
+  }
+
+  const roundedRate = Math.round(rate * 10) / 10;
+
+  if (roundedRate === 0 && rate < 0) {
+    return "Below 0%";
+  }
+
+  return `${roundedRate}%`;
+}
+
 function filterLayout(
   layout: Layout | undefined,
   widgetSettings: WidgetSettings
@@ -596,21 +615,15 @@ export default function Home() {
     );
   }, [layouts, hasLoaded]);
 
-  const monthlyIncome =
-    calculateIncome(transactions);
-
-  const monthlyExpenses =
-    calculateExpenses(transactions);
-
-  const monthlySavings =
-    calculateSavings(transactions);
-
-  const savingsRate =
-    monthlyIncome > 0
-      ? Math.round(
-          (monthlySavings / monthlyIncome) * 100
-        )
-      : 0;
+  const {
+    income: monthlyIncome,
+    expenses: monthlyExpenses,
+    surplus: monthlySurplus,
+    surplusRate,
+  } = calculateMonthlyFinancialSummary(
+    transactions,
+    new Date()
+  );
 
   const visibleWidgetIds = useMemo(
     () =>
@@ -747,12 +760,12 @@ export default function Home() {
         return (
           <ExpandedStatCard
             title="Net worth"
-            value="£41,283"
+            value={formatCurrency(41_283)}
             description="Your total financial position"
             size={size}
             secondaryLabel="Assets"
-            secondaryValue="£52,283"
-            insight="Your estimated assets currently exceed liabilities by £41,283."
+            secondaryValue={formatCurrency(52_283)}
+            insight={`Your estimated assets currently exceed liabilities by ${formatCurrency(41_283)}.`}
           />
         );
 
@@ -769,7 +782,7 @@ export default function Home() {
             secondaryValue={formatCurrency(
               monthlyIncome / 4.33
             )}
-            insight="Your monthly income is calculated from all income transactions stored in Finovo."
+            insight="Your monthly income is calculated from income transactions dated in your current calendar month."
           />
         );
 
@@ -793,18 +806,22 @@ export default function Home() {
       case "monthlySavings":
         return (
           <ExpandedStatCard
-            title="Monthly savings"
+            title="Monthly surplus"
             value={formatCurrency(
-              monthlySavings
+              monthlySurplus
             )}
-            description="Income minus expenses"
+            description="Income minus expenses this month"
             size={size}
-            secondaryLabel="Savings rate"
-            secondaryValue={`${savingsRate}%`}
+            secondaryLabel="Surplus rate"
+            secondaryValue={formatSurplusRate(surplusRate)}
             insight={
-              savingsRate >= 20
-                ? "Your current savings rate is above the common 20% budgeting target."
-                : "Reducing flexible spending could improve your monthly savings rate."
+              surplusRate === null
+                ? "A surplus rate is unavailable when no income is recorded for the month."
+                : surplusRate < 0
+                  ? "Expenses are higher than income this month. Reviewing flexible spending may help restore a surplus."
+                  : surplusRate >= 20
+                    ? "Your current surplus rate is above a common 20% budgeting guideline; the right target depends on your circumstances."
+                    : "A common guideline is 20%, but the right surplus rate depends on your circumstances."
             }
           />
         );
@@ -833,11 +850,11 @@ export default function Home() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-3xl font-bold">
-                    £11,000
+                    {formatCurrency(11_000)}
                   </p>
 
                   <p className="mt-1 text-sm text-zinc-500">
-                    of £30,000 saved
+                    of {formatCurrency(30_000)} saved
                   </p>
                 </div>
 
@@ -852,12 +869,12 @@ export default function Home() {
 
               <div className="mt-auto pt-5">
                 <p className="text-sm text-zinc-400">
-                  £19,000 remaining
+                  {formatCurrency(19_000)} remaining
                 </p>
 
                 {size.height >= 5 && (
                   <p className="mt-3 text-sm leading-6 text-zinc-500">
-                    At £500 per month, this goal
+                    At {formatCurrency(500)} per month, this goal
                     would take approximately another
                     38 months.
                   </p>
@@ -1015,7 +1032,7 @@ export default function Home() {
                       {isEditMode && (
                         <button
                           type="button"
-                          aria-label={`Move ${widgetId} widget`}
+                          aria-label={`Move ${getWidgetTitle(widgetId)} widget`}
                           className="finovo-drag-handle absolute right-4 top-4 z-30 flex h-9 w-9 cursor-grab items-center justify-center rounded-xl border border-white/10 bg-zinc-950/90 text-zinc-400 shadow-lg backdrop-blur transition hover:text-white active:cursor-grabbing"
                         >
                           <GripVertical

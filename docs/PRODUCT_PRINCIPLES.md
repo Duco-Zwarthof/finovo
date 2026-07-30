@@ -77,7 +77,7 @@ Complex financial concepts should become simple experiences.
 ```
 Savings
 
-€4,250
+€4,250.00
 ```
 
 ### Prefer
@@ -85,9 +85,9 @@ Savings
 ```
 Savings
 
-€4,250
+€4,250.00
 
-You saved €310 this month.
+You contributed €310.00 to savings this month.
 
 85% of your emergency fund has been completed.
 
@@ -173,9 +173,9 @@ Spend less on restaurants.
 ### Prefer
 
 ```
-You spent €64 more on restaurants than your average over the last three months.
+You spent €64.00 more on restaurants than your average over the last three months.
 
-Reducing this by €40 each month could save almost €500 per year.
+Reducing this by €40.00 each month could save almost €500.00 per year.
 ```
 
 Understanding creates motivation.
@@ -212,7 +212,7 @@ Budget failed.
 ### Prefer
 
 ```
-You spent €28 above your dining budget this month.
+You spent €28.00 above your dining budget this month.
 
 Reducing restaurant spending slightly next month would bring you back on track.
 ```
@@ -227,9 +227,9 @@ Small financial habits create large long-term results.
 
 Finovo should constantly make this visible.
 
-Saving €25 per month matters.
+Saving €25.00 per month matters.
 
-Investing €100 per month matters.
+Investing €100.00 per month matters.
 
 Reducing one subscription matters.
 
@@ -249,13 +249,13 @@ Users should understand how today's decisions influence tomorrow.
 Instead of:
 
 ```
-You saved €30.
+You saved €30.00.
 ```
 
 Prefer:
 
 ```
-Saving €30 every month adds €360 each year.
+Saving €30.00 every month adds €360.00 each year.
 
 Invested consistently, those contributions could grow substantially over time.
 ```
@@ -309,7 +309,7 @@ Every useful insight should already be available.
 
 ## Rules
 
-- Automatically calculate savings rates.
+- Automatically calculate surplus rates.
 - Automatically calculate investment returns.
 - Automatically calculate budget usage.
 - Automatically calculate monthly averages.
@@ -320,18 +320,18 @@ Every useful insight should already be available.
 
 ```
 Income
-€2,400
+€2,400.00
 
 Expenses
-€1,780
+€1,780.00
 ```
 
 ### Prefer
 
 ```
-You saved €620 this month.
+Your monthly surplus is €620.00.
 
-That's a savings rate of 26%.
+That's a surplus rate of 26%.
 
 This is 4% higher than last month.
 ```
@@ -462,7 +462,7 @@ You failed your budget.
 ### Prefer
 
 ```
-You exceeded your budget by €22.
+You exceeded your budget by €22.00.
 
 Reducing discretionary spending slightly next month would put you back on track.
 ```
