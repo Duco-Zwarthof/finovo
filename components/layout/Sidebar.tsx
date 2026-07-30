@@ -1,5 +1,6 @@
 import {
   ChartNoAxesCombined,
+  ChevronRight,
   LayoutDashboard,
   PiggyBank,
   Settings,
@@ -39,7 +40,7 @@ const navigationItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="flex min-h-screen w-72 flex-col border-r border-white/10 bg-zinc-950 px-5 py-6">
+    <aside className="sticky top-0 flex h-dvh w-72 shrink-0 flex-col border-r border-white/10 bg-zinc-950 px-5 py-6">
       <div className="flex items-center gap-3 px-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/20">
           <ChartNoAxesCombined size={23} strokeWidth={2.3} />
@@ -56,51 +57,91 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="mt-12 space-y-2">
+      <nav className="mt-12">
         <p className="mb-4 px-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-600">
           Menu
         </p>
 
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
+        <div className="space-y-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
 
-          return (
-            <button
-              key={item.label}
-              className={`flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
-                item.active
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon size={19} strokeWidth={1.9} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 ${
+                  item.active
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                    item.active
+                      ? "bg-white/10"
+                      : "bg-white/[0.03] group-hover:bg-white/5"
+                  }`}
+                >
+                  <Icon size={18} strokeWidth={2} />
+                </div>
+
+                <span className="flex-1">
+                  {item.label}
+                </span>
+
+                <ChevronRight
+                  size={16}
+                  className={`transition ${
+                    item.active
+                      ? "opacity-100"
+                      : "translate-x-[-4px] opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       <div className="mt-auto">
-        <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-2">
-            <PiggyBank size={17} className="text-blue-500" />
+        <div className="mb-4 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+              <PiggyBank size={18} />
+            </div>
 
             <p className="text-sm font-semibold text-white">
               Complete your profile
             </p>
           </div>
 
-          <p className="mt-2 text-xs leading-5 text-zinc-500">
+          <p className="mt-3 text-xs leading-5 text-zinc-500">
             Add your financial details to improve your dashboard.
           </p>
 
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-            <div className="h-full w-[40%] rounded-full bg-blue-600" />
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-zinc-500">
+                Progress
+              </span>
+
+              <span className="font-semibold text-blue-400">
+                40%
+              </span>
+            </div>
+
+            <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="h-full w-[40%] rounded-full bg-blue-600" />
+            </div>
           </div>
         </div>
 
-        <button className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-white/5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-white">
+        <button
+          type="button"
+          className="group flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-left transition hover:border-white/10 hover:bg-white/5"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-white transition group-hover:bg-zinc-700">
             <UserRound size={18} />
           </div>
 
@@ -114,7 +155,9 @@ export default function Sidebar() {
             </p>
           </div>
 
-          <span className="text-zinc-600">•••</span>
+          <span className="text-lg leading-none text-zinc-600 transition group-hover:text-zinc-400">
+            •••
+          </span>
         </button>
 
         <p className="mt-4 text-center text-xs text-zinc-700">

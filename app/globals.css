@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
+  background: #09090b;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+
+.react-grid-item {
+  transition:
+    transform 200ms ease,
+    width 200ms ease,
+    height 200ms ease;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+
+.react-grid-item.resizing {
+  z-index: 40;
+  transition: none;
+}
+
+.react-grid-item.react-draggable-dragging {
+  z-index: 50;
+  transition: none;
+}
+
+.react-grid-placeholder {
+  border: 1px dashed rgba(59, 130, 246, 0.7);
+  border-radius: 24px;
+  background: rgba(59, 130, 246, 0.12);
+  opacity: 1;
+}
+
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.finovo-widget-editing > .react-resizable-handle,
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  right: 8px;
+  bottom: 8px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid rgba(96, 165, 250, 0.9);
+  border-bottom: 2px solid rgba(96, 165, 250, 0.9);
+}
+
+.finovo-widget-editing {
+  border-radius: 24px;
+  outline: 1px dashed rgba(96, 165, 250, 0.28);
+  outline-offset: 3px;
+}
+
+.finovo-widget-editing:hover {
+  outline-color: rgba(96, 165, 250, 0.65);
+}
+
+.finovo-drag-handle {
+  touch-action: none;
+}
+
+.react-grid-item > div,
+.react-grid-item > section,
+.react-grid-item > article {
+  height: 100%;
+}
+
+@media (max-width: 767px) {
+  .react-grid-item > .react-resizable-handle {
+    display: none;
+  }
 }
