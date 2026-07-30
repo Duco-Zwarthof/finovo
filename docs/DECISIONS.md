@@ -150,6 +150,36 @@ This is a presentation decision only. It does not introduce multi-currency suppo
 
 ---
 
+# Decision 009 — Validated Browser-Local Persistence
+
+**Status:** Accepted
+
+## Decision
+
+For the current MVP, Finovo persists transactions, dashboard widget visibility and responsive layouts in browser `localStorage` using the existing keys:
+
+- `finovo-transactions`
+- `finovo-dashboard-widgets`
+- `finovo-dashboard-layouts-v2`
+
+Persisted JSON is treated as untrusted input. Each state slice is parsed and runtime-validated independently during lazy client-state initialization. A missing or unusable value falls back to its in-code default. A partially invalid transaction array retains valid entries in their original order and ignores invalid entries; the first valid transaction wins when IDs are duplicated.
+
+Initialization does not write to storage. A missing, invalid, recovered or unavailable payload remains untouched until the user explicitly changes the relevant state slice. A successful user change then stores the current validated state, except dashboard reset deliberately removes the layout key so defaults apply on the next load. Read or write failures keep the application usable in memory and produce a visible warning that changes may be lost on reload.
+
+The storage keys, payload shapes, transaction amount representation and widget IDs remain unchanged. This decision establishes a validation boundary for later migrations but does not introduce a migration or versioned payload.
+
+Browser-local persistence is limited to the current origin and browser profile on the current device. It does not provide authentication, cloud synchronization, cross-device access or backup.
+
+## Reason
+
+- Runtime validation prevents malformed saved data from entering rendering and financial calculations.
+- Independent fallback keeps one invalid state slice from preventing other valid state from loading.
+- Lazy initialization and explicit user-driven writes prevent defaults or recovered fallbacks from overwriting stored payloads during hydration.
+- Retaining the existing keys and payloads preserves compatible user data without an unnecessary migration.
+- Explicit browser and device limitations prevent local persistence from being mistaken for durable account storage.
+
+---
+
 # Future Decisions
 
 Every significant decision should be added here using the same format.

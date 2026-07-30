@@ -45,6 +45,11 @@ Implemented functionality:
 - Monthly surplus and surplus rate
 - Transaction-driven financial summaries
 - Consistent EUR presentation with two decimal places
+- Validated browser-local persistence for transactions, widget visibility and responsive layouts
+
+Current limitation:
+
+- Saved data is available only in the current browser profile on the current device; account and cloud synchronization are not implemented.
 
 Planned functionality:
 
@@ -52,7 +57,6 @@ Planned functionality:
 - Draggable widgets
 - Responsive layouts
 - Widget resizing
-- Saved layouts
 - Personalized dashboard
 
 ---

@@ -6,12 +6,18 @@
 
 - Added strict local-calendar date utilities and focused unit tests for date and monthly-summary behavior.
 - Added centralized exact and compact EUR formatters using the `en-IE` locale.
+- Added a centralized, runtime-validated browser-storage boundary with focused recovery and failure tests.
 
 ### Changed
 
 - Renamed the dashboard's income-minus-expenses metric and percentage to monthly surplus and surplus rate.
 - Standardized monetary values across dashboard cards, goals, transactions, filters and charts to EUR with two decimal places.
+- Initialized persisted dashboard state lazily and preserved existing local-storage keys and payload shapes.
+- Deferred persistence until explicit user changes and added a visible warning for storage recovery or write failures.
 
 ### Fixed
 
 - Fixed monthly income, expenses, surplus and surplus rate by excluding transactions outside the user's current local calendar month.
+- Prevented malformed or unavailable browser storage from crashing dashboard initialization.
+- Prevented hidden widgets from losing their saved responsive positions and dimensions during layout updates.
+- Resolved the dashboard hydration lint failure without suppressing ESLint rules.

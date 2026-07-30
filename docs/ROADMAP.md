@@ -39,7 +39,7 @@ Features should be released when they are useful, not merely when they are finis
 - ✅ Widget system
 - ✅ Draggable widgets
 - 🚧 Resizable widgets
-- 🚧 Saved layouts
+- ✅ Saved layouts
 
 ## Budgeting
 

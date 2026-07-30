@@ -272,6 +272,30 @@ Guidelines:
 
 Avoid unnecessary global state.
 
+## Browser-Local Persistence
+
+The dashboard currently persists three independent state slices in browser `localStorage` under stable keys:
+
+- `finovo-transactions` stores the transaction array.
+- `finovo-dashboard-widgets` stores widget visibility settings.
+- `finovo-dashboard-layouts-v2` stores responsive widget layouts, including position and dimensions.
+
+`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. The existing keys and payload shapes remain unchanged; this stabilization does not introduce a storage migration.
+
+Stored JSON is treated as untrusted input:
+
+- Transaction entries must contain a non-empty ID and title, a supported category and type, a finite positive amount and a date accepted by the strict local-date utility.
+- In a partially invalid transaction array, valid entries are retained in their original order. Invalid entries and later entries with duplicate IDs are discarded.
+- Widget settings are accepted only for known widget IDs with boolean values. Invalid or missing fields use their in-code defaults without resetting other valid settings.
+- Responsive layouts accept only known widget IDs and valid grid positions and dimensions. Missing or invalid widget layouts use their breakpoint defaults.
+- Layout updates merge with the complete saved layout so hiding a widget does not erase its stored position or size.
+
+Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON and wholly structurally invalid payloads both produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: missing, invalid and partially recovered payloads remain untouched until the user explicitly changes that state slice. The next successful user change writes the current validated state; dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, and the UI warns that changes may not survive a reload.
+
+Persisted state is initialized lazily in the client component without an initial persistence write. Browser globals are guarded during server rendering, and the responsive dashboard content waits for its client-side container measurement so server fallback state cannot cause a hydration mismatch.
+
+This data belongs only to the current origin and browser profile on the current device. It is not authenticated, cloud-synchronized, shared across browsers or devices, or backed up. Clearing site data or using ephemeral/private browsing can remove it.
+
 ---
 
 # Dashboard

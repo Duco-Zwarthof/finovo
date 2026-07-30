@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   Responsive,
   useContainerWidth,
   type Layout,
-  type ResponsiveLayouts,
 } from "react-grid-layout";
 
 import { verticalCompactor } from "react-grid-layout/core";
@@ -40,32 +39,39 @@ import {
 import { formatCurrency } from "@/lib/money";
 
 import { sampleTransactions } from "@/lib/sample-transactions";
-
-type WidgetId =
-  | "netWorth"
-  | "monthlyIncome"
-  | "monthlyExpenses"
-  | "monthlySavings"
-  | "cashflow"
-  | "savingsGoal"
-  | "recentTransactions";
-
-type DashboardBreakpoint = "lg" | "md" | "sm" | "xs";
-
-type DashboardLayouts = ResponsiveLayouts<DashboardBreakpoint>;
-
-type WidgetSettings = Record<WidgetId, boolean>;
+import {
+  STORAGE_KEYS,
+  mergeDashboardLayoutsPreservingHidden,
+  readStoredDashboardLayouts,
+  readStoredTransactions,
+  readStoredWidgetSettings,
+  removeStoredValue,
+  writeStoredDashboardLayouts,
+  writeStoredTransactions,
+  writeStoredWidgetSettings,
+  type DashboardBreakpoint,
+  type DashboardLayouts,
+  type StorageReadStatus,
+  type StorageWriteResult,
+  type WidgetId,
+  type WidgetSettings,
+} from "@/lib/storage";
 
 type WidgetSize = {
   width: number;
   height: number;
 };
 
-const STORAGE_KEYS = {
-  transactions: "finovo-transactions",
-  widgetSettings: "finovo-dashboard-widgets",
-  layouts: "finovo-dashboard-layouts-v2",
-};
+type StorageArea = keyof typeof STORAGE_KEYS;
+
+type StorageHealth =
+  | StorageReadStatus
+  | "write-failed";
+
+type StorageHealthState = Record<
+  StorageArea,
+  StorageHealth
+>;
 
 const defaultWidgetSettings: WidgetSettings = {
   netWorth: true,
@@ -410,6 +416,29 @@ function formatSurplusRate(rate: number | null) {
   return `${roundedRate}%`;
 }
 
+function getStorageNotice(
+  storageHealth: StorageHealthState
+) {
+  const statuses = Object.values(storageHealth);
+
+  if (
+    statuses.includes("unavailable") ||
+    statuses.includes("write-failed")
+  ) {
+    return "Changes could not be saved in this browser. They may be lost when you reload the page.";
+  }
+
+  if (statuses.includes("invalid")) {
+    return "Some saved dashboard data was invalid, so safe defaults are shown instead.";
+  }
+
+  if (statuses.includes("recovered")) {
+    return "Some invalid saved data was ignored. Valid transactions and dashboard preferences were preserved.";
+  }
+
+  return null;
+}
+
 function filterLayout(
   layout: Layout | undefined,
   widgetSettings: WidgetSettings
@@ -487,17 +516,40 @@ function ExpandedStatCard({
 }
 
 export default function Home() {
+  const [initialTransactions] = useState(() =>
+    readStoredTransactions(sampleTransactions)
+  );
+
   const [transactions, setTransactions] =
-    useState<Transaction[]>(sampleTransactions);
+    useState<Transaction[]>(initialTransactions.value);
 
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
 
+  const [initialWidgetSettings] = useState(() =>
+    readStoredWidgetSettings(defaultWidgetSettings)
+  );
+
   const [widgetSettings, setWidgetSettings] =
-    useState<WidgetSettings>(defaultWidgetSettings);
+    useState<WidgetSettings>(
+      initialWidgetSettings.value
+    );
+
+  const [initialLayouts] = useState(() =>
+    readStoredDashboardLayouts(defaultLayouts)
+  );
 
   const [layouts, setLayouts] =
-    useState<DashboardLayouts>(defaultLayouts);
+    useState<DashboardLayouts>(initialLayouts.value);
+
+  const layoutsRef = useRef(layouts);
+
+  const [storageHealth, setStorageHealth] =
+    useState<StorageHealthState>(() => ({
+      transactions: initialTransactions.status,
+      widgetSettings: initialWidgetSettings.status,
+      layouts: initialLayouts.status,
+    }));
 
   const [widgetSizes, setWidgetSizes] = useState<
     Record<string, WidgetSize>
@@ -509,111 +561,10 @@ export default function Home() {
   const [isEditMode, setIsEditMode] =
     useState(false);
 
-  const [hasLoaded, setHasLoaded] =
-    useState(false);
-
   const { width, containerRef, mounted } =
-    useContainerWidth();
-
-  useEffect(() => {
-    const savedTransactions = localStorage.getItem(
-      STORAGE_KEYS.transactions
-    );
-
-    const savedWidgetSettings = localStorage.getItem(
-      STORAGE_KEYS.widgetSettings
-    );
-
-    const savedLayouts = localStorage.getItem(
-      STORAGE_KEYS.layouts
-    );
-
-    if (savedTransactions) {
-      try {
-        setTransactions(
-          JSON.parse(savedTransactions) as Transaction[]
-        );
-      } catch (error) {
-        console.error(
-          "Could not load saved transactions:",
-          error
-        );
-      }
-    }
-
-    if (savedWidgetSettings) {
-      try {
-        const parsedSettings = JSON.parse(
-          savedWidgetSettings
-        ) as Partial<WidgetSettings>;
-
-        setWidgetSettings({
-          ...defaultWidgetSettings,
-          ...parsedSettings,
-        });
-      } catch (error) {
-        console.error(
-          "Could not load widget settings:",
-          error
-        );
-      }
-    }
-
-    if (savedLayouts) {
-      try {
-        const parsedLayouts = JSON.parse(
-          savedLayouts
-        ) as DashboardLayouts;
-
-        setLayouts({
-          lg: parsedLayouts.lg ?? defaultLayouts.lg,
-          md: parsedLayouts.md ?? defaultLayouts.md,
-          sm: parsedLayouts.sm ?? defaultLayouts.sm,
-          xs: parsedLayouts.xs ?? defaultLayouts.xs,
-        });
-      } catch (error) {
-        console.error(
-          "Could not load dashboard layouts:",
-          error
-        );
-      }
-    }
-
-    setHasLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasLoaded) {
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEYS.transactions,
-      JSON.stringify(transactions)
-    );
-  }, [transactions, hasLoaded]);
-
-  useEffect(() => {
-    if (!hasLoaded) {
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEYS.widgetSettings,
-      JSON.stringify(widgetSettings)
-    );
-  }, [widgetSettings, hasLoaded]);
-
-  useEffect(() => {
-    if (!hasLoaded) {
-      return;
-    }
-
-    localStorage.setItem(
-      STORAGE_KEYS.layouts,
-      JSON.stringify(layouts)
-    );
-  }, [layouts, hasLoaded]);
+    useContainerWidth({
+      measureBeforeMount: true,
+    });
 
   const {
     income: monthlyIncome,
@@ -624,6 +575,8 @@ export default function Home() {
     transactions,
     new Date()
   );
+
+  const storageNotice = getStorageNotice(storageHealth);
 
   const visibleWidgetIds = useMemo(
     () =>
@@ -661,10 +614,16 @@ export default function Home() {
   function handleAddTransaction(
     transaction: Transaction
   ) {
-    setTransactions((current) => [
+    const nextTransactions = [
       transaction,
-      ...current,
-    ]);
+      ...transactions,
+    ];
+
+    setTransactions(nextTransactions);
+    recordStorageResult(
+      "transactions",
+      writeStoredTransactions(nextTransactions)
+    );
   }
 
   function handleEditTransaction(
@@ -676,41 +635,63 @@ export default function Home() {
   function handleSaveEditedTransaction(
     updatedTransaction: Transaction
   ) {
-    setTransactions((current) =>
-      current.map((transaction) =>
+    const nextTransactions = transactions.map(
+      (transaction) =>
         transaction.id ===
         updatedTransaction.id
           ? updatedTransaction
           : transaction
-      )
+    );
+
+    setTransactions(nextTransactions);
+    recordStorageResult(
+      "transactions",
+      writeStoredTransactions(nextTransactions)
     );
 
     setEditingTransaction(null);
   }
 
   function handleDeleteTransaction(id: string) {
-    setTransactions((current) =>
-      current.filter(
-        (transaction) =>
-          transaction.id !== id
-      )
+    const nextTransactions = transactions.filter(
+      (transaction) => transaction.id !== id
+    );
+
+    setTransactions(nextTransactions);
+    recordStorageResult(
+      "transactions",
+      writeStoredTransactions(nextTransactions)
     );
   }
 
   function toggleWidget(widgetId: WidgetId) {
-    setWidgetSettings((current) => ({
-      ...current,
-      [widgetId]: !current[widgetId],
-    }));
+    const nextWidgetSettings = {
+      ...widgetSettings,
+      [widgetId]: !widgetSettings[widgetId],
+    };
+
+    setWidgetSettings(nextWidgetSettings);
+    recordStorageResult(
+      "widgetSettings",
+      writeStoredWidgetSettings(nextWidgetSettings)
+    );
   }
 
   function resetDashboard() {
     setWidgetSettings(defaultWidgetSettings);
     setLayouts(defaultLayouts);
+    layoutsRef.current = defaultLayouts;
     setWidgetSizes({});
 
-    localStorage.removeItem(
-      STORAGE_KEYS.layouts
+    recordStorageResult(
+      "widgetSettings",
+      writeStoredWidgetSettings(
+        defaultWidgetSettings
+      )
+    );
+    recordStorageResult(
+      "layouts",
+      removeStoredValue(STORAGE_KEYS.layouts)
     );
   }
 
@@ -718,12 +699,21 @@ export default function Home() {
     currentLayout: Layout,
     allLayouts: DashboardLayouts
   ) {
-    setLayouts({
-      lg: allLayouts.lg ?? layouts.lg,
-      md: allLayouts.md ?? layouts.md,
-      sm: allLayouts.sm ?? layouts.sm,
-      xs: allLayouts.xs ?? layouts.xs,
-    });
+    const nextLayouts =
+      mergeDashboardLayoutsPreservingHidden(
+        layoutsRef.current,
+        allLayouts
+      );
+
+    layoutsRef.current = nextLayouts;
+    setLayouts(nextLayouts);
+
+    if (isEditMode) {
+      recordStorageResult(
+        "layouts",
+        writeStoredDashboardLayouts(nextLayouts)
+      );
+    }
 
     setWidgetSizes((currentSizes) => {
       const nextSizes = {
@@ -739,6 +729,25 @@ export default function Home() {
 
       return nextSizes;
     });
+  }
+
+  function recordStorageResult(
+    area: StorageArea,
+    result: StorageWriteResult
+  ) {
+    const status: StorageHealth =
+      result.status === "written"
+        ? "valid"
+        : result.status === "removed"
+          ? "missing"
+          : result.status === "unavailable"
+            ? "unavailable"
+            : "write-failed";
+
+    setStorageHealth((current) => ({
+      ...current,
+      [area]: status,
+    }));
   }
 
   function getWidgetSize(
@@ -961,30 +970,39 @@ export default function Home() {
           </div>
         )}
 
-        {visibleWidgetIds.length === 0 ? (
-          <section className="flex min-h-[500px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
-            <EyeOff
-              size={26}
-              className="text-zinc-500"
-            />
+        {mounted && storageNotice && (
+          <div
+            role="status"
+            className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3 text-sm text-amber-100"
+          >
+            {storageNotice}
+          </div>
+        )}
 
-            <h2 className="mt-5 text-xl font-bold">
-              Your dashboard is empty
-            </h2>
+        <div ref={containerRef}>
+          {mounted &&
+            (visibleWidgetIds.length === 0 ? (
+              <section className="flex min-h-[500px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
+                <EyeOff
+                  size={26}
+                  className="text-zinc-500"
+                />
 
-            <button
-              type="button"
-              onClick={() =>
-                setShowCustomizePanel(true)
-              }
-              className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-            >
-              Choose widgets
-            </button>
-          </section>
-        ) : (
-          <div ref={containerRef}>
-            {mounted && (
+                <h2 className="mt-5 text-xl font-bold">
+                  Your dashboard is empty
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowCustomizePanel(true)
+                  }
+                  className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                >
+                  Choose widgets
+                </button>
+              </section>
+            ) : (
               <Responsive<DashboardBreakpoint>
                 width={width}
                 layouts={visibleLayouts}
@@ -1046,9 +1064,8 @@ export default function Home() {
                   )
                 )}
               </Responsive>
-            )}
-          </div>
-        )}
+            ))}
+        </div>
       </section>
 
       {editingTransaction && (
