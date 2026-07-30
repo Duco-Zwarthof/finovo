@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { sampleTransactions } from "./sample-transactions";
+import { TRANSACTION_STORAGE_VERSION } from "./persisted-transactions";
 import {
   STORAGE_KEYS,
   readStoredTransactions,
@@ -325,7 +326,10 @@ describe("transaction data persistence boundary", () => {
       )
     ).toEqual({ status: "written" });
     expect(values.get(STORAGE_KEYS.transactions)).toBe(
-      JSON.stringify([userTransaction])
+      JSON.stringify({
+        version: TRANSACTION_STORAGE_VERSION,
+        transactions: [userTransaction],
+      })
     );
 
     const reloadedState = createTransactionDataState(

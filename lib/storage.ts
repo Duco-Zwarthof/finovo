@@ -6,6 +6,10 @@ import type {
 
 import { parseLocalDate } from "./date";
 import {
+  TRANSACTION_STORAGE_VERSION,
+  createPersistedTransactionDataV1,
+} from "./persisted-transactions";
+import {
   TRANSACTION_CATEGORIES,
   TRANSACTION_TYPES,
   type Transaction,
@@ -210,6 +214,29 @@ export function validateStoredTransactions(
     value: transactions,
     recovered,
   };
+}
+
+export function validatePersistedTransactionDataV1(
+  value: unknown
+): StorageValidationResult<Transaction[]> | null {
+  if (
+    !isRecord(value) ||
+    value.version !== TRANSACTION_STORAGE_VERSION
+  ) {
+    return null;
+  }
+
+  return validateStoredTransactions(value.transactions);
+}
+
+function validateReadableTransactionData(
+  value: unknown
+): StorageValidationResult<Transaction[]> | null {
+  if (Array.isArray(value)) {
+    return validateStoredTransactions(value);
+  }
+
+  return validatePersistedTransactionDataV1(value);
 }
 
 export function validateStoredWidgetSettings(
@@ -477,7 +504,7 @@ export function readStoredTransactions(
   return readStoredJson(
     STORAGE_KEYS.transactions,
     () => fallback.map((transaction) => ({ ...transaction })),
-    validateStoredTransactions,
+    validateReadableTransactionData,
     storage
   );
 }
@@ -488,7 +515,7 @@ export function writeStoredTransactions(
 ): StorageWriteResult {
   return writeStoredJson(
     STORAGE_KEYS.transactions,
-    transactions,
+    createPersistedTransactionDataV1(transactions),
     storage
   );
 }

@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import type { Transaction } from "./types";
 import {
+  TRANSACTION_STORAGE_VERSION,
+  type PersistedTransactionDataV1,
+} from "./persisted-transactions";
+import {
   STORAGE_KEYS,
   mergeDashboardLayoutsPreservingHidden,
   readStoredDashboardLayouts,
   readStoredTransactions,
   readStoredWidgetSettings,
   removeStoredValue,
+  validatePersistedTransactionDataV1,
   validateStoredTransactions,
   writeStoredTransactions,
   type DashboardLayouts,
@@ -34,6 +39,15 @@ const fallbackTransactions: Transaction[] = [
     date: "2026-07-01",
   },
 ];
+
+function persistedTransactionData(
+  transactions: Transaction[]
+): PersistedTransactionDataV1 {
+  return {
+    version: TRANSACTION_STORAGE_VERSION,
+    transactions,
+  };
+}
 
 const defaultWidgetSettings: WidgetSettings = {
   netWorth: true,
@@ -222,14 +236,40 @@ describe("stored transaction validation", () => {
       recovered: true,
     });
   });
+
+  it("validates the current persisted transaction envelope", () => {
+    expect(
+      validatePersistedTransactionDataV1(
+        persistedTransactionData([validTransaction])
+      )
+    ).toEqual({
+      value: [validTransaction],
+      recovered: false,
+    });
+  });
+
+  it("rejects unsupported persisted transaction versions", () => {
+    expect(
+      validatePersistedTransactionDataV1({
+        version: 2,
+        transactions: [validTransaction],
+      })
+    ).toBeNull();
+  });
+
+  it("rejects a current envelope without a transaction array", () => {
+    expect(
+      validatePersistedTransactionDataV1({ version: 1 })
+    ).toBeNull();
+  });
 });
 
 describe("transaction storage reads", () => {
-  it("reads valid stored transactions", () => {
+  it("reads a valid current transaction envelope", () => {
     const { storage } = createFakeStorage({
-      [STORAGE_KEYS.transactions]: JSON.stringify([
-        validTransaction,
-      ]),
+      [STORAGE_KEYS.transactions]: JSON.stringify(
+        persistedTransactionData([validTransaction])
+      ),
     });
 
     expect(
@@ -240,8 +280,40 @@ describe("transaction storage reads", () => {
     });
   });
 
-  it("preserves a stored empty transaction array", () => {
+  it("preserves an empty current transaction envelope", () => {
     const { storage } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: JSON.stringify(
+        persistedTransactionData([])
+      ),
+    });
+
+    expect(
+      readStoredTransactions(fallbackTransactions, storage)
+    ).toEqual({
+      value: [],
+      status: "valid",
+    });
+  });
+
+  it("continues to read a legacy transaction array without rewriting it", () => {
+    const rawValue = JSON.stringify([validTransaction]);
+    const { storage, values } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: rawValue,
+    });
+
+    expect(
+      readStoredTransactions(fallbackTransactions, storage)
+    ).toEqual({
+      value: [validTransaction],
+      status: "valid",
+    });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(
+      rawValue
+    );
+  });
+
+  it("preserves a stored empty legacy transaction array", () => {
+    const { storage, values } = createFakeStorage({
       [STORAGE_KEYS.transactions]: "[]",
     });
 
@@ -251,6 +323,7 @@ describe("transaction storage reads", () => {
       value: [],
       status: "valid",
     });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe("[]");
   });
 
   it("returns a deterministic fallback for malformed JSON", () => {
@@ -280,10 +353,17 @@ describe("transaction storage reads", () => {
   });
 
   it("reports partial recovery without rewriting stored data", () => {
-    const rawValue = JSON.stringify([
-      validTransaction,
-      { ...validTransaction, id: "invalid", type: "transfer" },
-    ]);
+    const rawValue = JSON.stringify({
+      version: TRANSACTION_STORAGE_VERSION,
+      transactions: [
+        validTransaction,
+        {
+          ...validTransaction,
+          id: "invalid",
+          type: "transfer",
+        },
+      ],
+    });
     const { storage, values } = createFakeStorage({
       [STORAGE_KEYS.transactions]: rawValue,
     });
@@ -299,7 +379,7 @@ describe("transaction storage reads", () => {
     );
   });
 
-  it("rejects a parsed value that is not an array", () => {
+  it("rejects a parsed value that is neither a legacy array nor a current envelope", () => {
     const { storage } = createFakeStorage({
       [STORAGE_KEYS.transactions]: JSON.stringify({
         transaction: validTransaction,
@@ -312,6 +392,26 @@ describe("transaction storage reads", () => {
       value: fallbackTransactions,
       status: "invalid",
     });
+  });
+
+  it("rejects an unsupported transaction envelope without rewriting it", () => {
+    const rawValue = JSON.stringify({
+      version: 2,
+      transactions: [validTransaction],
+    });
+    const { storage, values } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: rawValue,
+    });
+
+    expect(
+      readStoredTransactions(fallbackTransactions, storage)
+    ).toEqual({
+      value: fallbackTransactions,
+      status: "invalid",
+    });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(
+      rawValue
+    );
   });
 
   it("distinguishes a missing value from an invalid one", () => {
@@ -342,14 +442,27 @@ describe("transaction storage reads", () => {
 });
 
 describe("storage writes and removal", () => {
-  it("writes the existing transaction payload shape", () => {
+  it("writes the current versioned transaction envelope", () => {
     const { storage, values } = createFakeStorage();
 
     expect(
       writeStoredTransactions([validTransaction], storage)
     ).toEqual({ status: "written" });
     expect(values.get(STORAGE_KEYS.transactions)).toBe(
-      JSON.stringify([validTransaction])
+      JSON.stringify(
+        persistedTransactionData([validTransaction])
+      )
+    );
+  });
+
+  it("writes an empty transaction list inside the current envelope", () => {
+    const { storage, values } = createFakeStorage();
+
+    expect(writeStoredTransactions([], storage)).toEqual({
+      status: "written",
+    });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(
+      JSON.stringify(persistedTransactionData([]))
     );
   });
 

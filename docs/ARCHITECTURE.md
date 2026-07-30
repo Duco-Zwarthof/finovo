@@ -276,21 +276,33 @@ Avoid unnecessary global state.
 
 The dashboard currently persists three independent state slices in browser `localStorage` under stable keys:
 
-- `finovo-transactions` stores the transaction array.
+- `finovo-transactions` stores the current transaction persistence envelope.
 - `finovo-dashboard-widgets` stores widget visibility settings.
 - `finovo-dashboard-layouts-v2` stores responsive widget layouts, including position and dimensions.
 
-`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. The existing keys and payload shapes remain unchanged; this stabilization does not introduce a storage migration.
+`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the persisted transaction model separately from the domain model in `lib/types.ts`.
+
+New transaction writes use the V1 envelope:
+
+```ts
+{
+  version: 1,
+  transactions: Transaction[]
+}
+```
+
+The storage key and transaction values remain unchanged. Existing unversioned transaction arrays remain readable and are not rewritten during initialization. Automatic legacy migration is intentionally deferred; the next explicit transaction change is written in the current V1 format through the normal storage boundary.
 
 Stored JSON is treated as untrusted input:
 
+- The transaction envelope must use the supported version and contain a transaction array. Unsupported versions and malformed envelopes are invalid.
 - Transaction entries must contain a non-empty ID and title, a supported category and type, a finite positive amount and a date accepted by the strict local-date utility.
 - In a partially invalid transaction array, valid entries are retained in their original order. Invalid entries and later entries with duplicate IDs are discarded.
 - Widget settings are accepted only for known widget IDs with boolean values. Invalid or missing fields use their in-code defaults without resetting other valid settings.
 - Responsive layouts accept only known widget IDs and valid grid positions and dimensions. Missing or invalid widget layouts use their breakpoint defaults.
 - Layout updates merge with the complete saved layout so hiding a widget does not erase its stored position or size.
 
-Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON and wholly structurally invalid payloads both produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: missing, invalid and partially recovered payloads remain untouched until the user explicitly changes that state slice. The next successful user change writes the current validated state; dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, and the UI warns that changes may not survive a reload.
+Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, missing, invalid and partially recovered payloads remain untouched until the user explicitly changes that state slice. The next successful user change writes the current validated state; transaction writes use the V1 envelope, while dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, and the UI warns that changes may not survive a reload.
 
 Persisted state is initialized lazily in the client component without an initial persistence write. Browser globals are guarded during server rendering, and the responsive dashboard content waits for its client-side container measurement so server fallback state cannot cause a hydration mismatch.
 
@@ -319,13 +331,13 @@ Demo transitions preserve the boundary:
 - Editing a demo row creates user state containing only the edited transaction as a new user-owned record.
 - Deleting a demo row creates an intentional empty user state.
 - User-state changes continue to operate on the user array normally.
-- Deleting the last user transaction persists `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
+- Deleting the last user transaction persists a V1 envelope whose `transactions` value is `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
 
 The demo array is never written to `finovo-transactions` or merged into a user write. Initialization performs no storage write. If an explicit change cannot be saved, the in-memory state remains user-owned and the existing storage warning explains that the change may be lost on reload; storage itself remains untouched.
 
 When transaction state is demo, the dashboard renders a visible, accessible explanation that the displayed values are examples and are not saved as the user's financial data. Net-worth and savings-goal values still have no user-data source, so those widgets remain explicitly labelled as sample examples in both transaction states.
 
-This boundary does not change the transaction storage key, payload shape, amount representation, widget IDs or dashboard layouts.
+The demo boundary does not change the transaction storage key, amount representation, widget IDs or dashboard layouts. Transaction persistence now uses the separately documented V1 envelope without changing demo-state selection or transitions.
 
 ---
 

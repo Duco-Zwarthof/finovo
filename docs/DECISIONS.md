@@ -166,7 +166,7 @@ Persisted JSON is treated as untrusted input. Each state slice is parsed and run
 
 Initialization does not write to storage. A missing, invalid, recovered or unavailable payload remains untouched until the user explicitly changes the relevant state slice. A successful user change then stores the current validated state, except dashboard reset deliberately removes the layout key so defaults apply on the next load. Read or write failures keep the application usable in memory and produce a visible warning that changes may be lost on reload.
 
-The storage keys, payload shapes, transaction amount representation and widget IDs remain unchanged. This decision establishes a validation boundary for later migrations but does not introduce a migration or versioned payload.
+At the time of this decision, the storage keys, payload shapes, transaction amount representation and widget IDs remained unchanged. Decision 011 later supersedes only the transaction payload-shape portion by introducing versioned writes; the validation, initialization and failure-handling rules remain active.
 
 Browser-local persistence is limited to the current origin and browser profile on the current device. It does not provide authentication, cloud synchronization, cross-device access or backup.
 
@@ -196,7 +196,7 @@ The first explicit add, edit or delete action in demo state switches to user sta
 
 Demo values are identified with visible, accessible text. The static net-worth and savings-goal widgets remain labelled as sample examples because Finovo does not yet have account or goal data sources.
 
-No initialization write, storage-key rename, payload migration, transaction-model change, widget-ID change or dashboard-layout change is introduced.
+At the time of this decision, no initialization write, storage-key rename, payload migration, transaction-model change, widget-ID change or dashboard-layout change was introduced. Decision 011 later adds versioned transaction writes without changing this demo behavior.
 
 Before this boundary, the storage fallback placed sample transactions into ordinary transaction state. Initialization did not save them, but a later add, edit or delete could persist samples alone or mixed with user entries. That behavior is no longer allowed.
 
@@ -207,6 +207,37 @@ Before this boundary, the storage fallback placed sample transactions into ordin
 - Separating samples from user state prevents demonstration values from entering financial history through transaction actions.
 - Empty recovery with a warning exposes malformed or inaccessible storage instead of masking possible data loss with plausible values.
 - Narrow legacy-seed recognition repairs prior sample persistence without changing the storage schema or discarding edited user records.
+
+---
+
+# Decision 011 — Versioned Transaction Persistence Envelope
+
+**Status:** Accepted
+
+## Decision
+
+New transaction writes use a V1 persistence envelope under the existing `finovo-transactions` key:
+
+```ts
+{
+  version: 1,
+  transactions: Transaction[]
+}
+```
+
+The persisted envelope is defined separately from the domain transaction model. The storage boundary validates the envelope version and its transaction entries, then continues to return domain `Transaction[]` values to the application.
+
+Existing unversioned transaction arrays remain readable and are not rewritten during initialization. This decision does not introduce automatic legacy migration. The next explicit transaction change uses the current V1 write format through the normal persistence path.
+
+The transaction fields, values, amount representation, storage key, demo behavior and application-facing storage API remain unchanged. Unsupported versions are treated as invalid stored data and follow the existing safe fallback and warning behavior.
+
+## Reason
+
+- An explicit version creates a safe discriminator for future persistence changes.
+- Keeping persistence types separate prevents storage metadata from entering the domain transaction model.
+- Continuing to read legacy arrays preserves existing user behavior without silently rewriting browser data.
+- Centralized validation keeps untrusted stored JSON outside dashboard and financial logic.
+- Retaining the existing key avoids an unnecessary second storage location.
 
 ---
 
