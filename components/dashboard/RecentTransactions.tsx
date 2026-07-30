@@ -40,6 +40,7 @@ import {
 
 type RecentTransactionsProps = {
   transactions: Transaction[];
+  isDemo: boolean;
   onEditTransaction: (
     transaction: Transaction
   ) => void;
@@ -194,6 +195,7 @@ function getCategoryStyle(
 
 export default function RecentTransactions({
   transactions,
+  isDemo,
   onEditTransaction,
   onDeleteTransaction,
 }: RecentTransactionsProps) {
@@ -415,12 +417,15 @@ export default function RecentTransactions({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-white">
-              Recent transactions
+              {isDemo
+                ? "Sample transactions"
+                : "Recent transactions"}
             </h2>
 
             <p className="mt-1 text-sm text-zinc-500">
-              Search, filter and sort your
-              financial activity.
+              {isDemo
+                ? "Demo records — not your saved financial activity."
+                : "Search, filter and sort your financial activity."}
             </p>
           </div>
 

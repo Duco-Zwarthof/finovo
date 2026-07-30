@@ -15,6 +15,7 @@ type AddTransactionModalProps = {
   onClose: () => void;
   onSave: (transaction: Transaction) => void;
   transaction?: Transaction;
+  isDemoTransaction?: boolean;
 };
 
 const incomeCategories: TransactionCategory[] = [
@@ -37,6 +38,7 @@ export default function AddTransactionModal({
   onClose,
   onSave,
   transaction,
+  isDemoTransaction = false,
 }: AddTransactionModalProps) {
   const isEditing = Boolean(transaction);
 
@@ -123,15 +125,19 @@ export default function AddTransactionModal({
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold">
-              {isEditing
-                ? "Edit transaction"
-                : "Add transaction"}
+              {isDemoTransaction
+                ? "Use sample transaction"
+                : isEditing
+                  ? "Edit transaction"
+                  : "Add transaction"}
             </h2>
 
             <p className="mt-1 text-sm text-zinc-400">
-              {isEditing
-                ? "Update the transaction details."
-                : "Record new income or an expense."}
+              {isDemoTransaction
+                ? "Saving this example creates one real transaction and removes the demo data."
+                : isEditing
+                  ? "Update the transaction details."
+                  : "Record new income or an expense."}
             </p>
           </div>
 
@@ -293,7 +299,9 @@ export default function AddTransactionModal({
               className="flex-1 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500"
             >
               {isEditing
-                ? "Save changes"
+                ? isDemoTransaction
+                  ? "Save as my transaction"
+                  : "Save changes"
                 : "Save transaction"}
             </button>
           </div>

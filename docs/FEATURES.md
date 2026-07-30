@@ -46,10 +46,13 @@ Implemented functionality:
 - Transaction-driven financial summaries
 - Consistent EUR presentation with two decimal places
 - Validated browser-local persistence for transactions, widget visibility and responsive layouts
+- Visibly labelled, display-only demo transactions when no saved transaction value exists
+- Deterministic separation between demo transactions and browser-local user transactions, including intentional empty datasets
 
-Current limitation:
+Current limitations:
 
 - Saved data is available only in the current browser profile on the current device; account and cloud synchronization are not implemented.
+- Net worth and savings-goal values remain labelled examples because account and goal data sources are not implemented.
 
 Planned functionality:
 

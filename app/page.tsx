@@ -37,8 +37,6 @@ import {
   calculateMonthlyFinancialSummary,
 } from "@/lib/finance";
 import { formatCurrency } from "@/lib/money";
-
-import { sampleTransactions } from "@/lib/sample-transactions";
 import {
   STORAGE_KEYS,
   mergeDashboardLayoutsPreservingHidden,
@@ -56,6 +54,14 @@ import {
   type WidgetId,
   type WidgetSettings,
 } from "@/lib/storage";
+import {
+  addTransactionToData,
+  createTransactionDataState,
+  deleteTransactionFromData,
+  getDashboardWidgetDataSource,
+  getDisplayedTransactions,
+  updateTransactionInData,
+} from "@/lib/transaction-data";
 
 type WidgetSize = {
   width: number;
@@ -91,7 +97,8 @@ const widgetOptions: {
   {
     key: "netWorth",
     title: "Net worth",
-    description: "Your total financial position.",
+    description:
+      "Sample data — not calculated from your transactions.",
   },
   {
     key: "monthlyIncome",
@@ -116,7 +123,8 @@ const widgetOptions: {
   {
     key: "savingsGoal",
     title: "Savings goal",
-    description: "Progress towards your house deposit.",
+    description:
+      "Sample goal — no saved goal data is connected.",
   },
   {
     key: "recentTransactions",
@@ -517,11 +525,19 @@ function ExpandedStatCard({
 
 export default function Home() {
   const [initialTransactions] = useState(() =>
-    readStoredTransactions(sampleTransactions)
+    readStoredTransactions([])
   );
 
-  const [transactions, setTransactions] =
-    useState<Transaction[]>(initialTransactions.value);
+  const [transactionData, setTransactionData] =
+    useState(() =>
+      createTransactionDataState(
+        initialTransactions
+      )
+    );
+
+  const transactions = getDisplayedTransactions(
+    transactionData
+  );
 
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
@@ -614,15 +630,18 @@ export default function Home() {
   function handleAddTransaction(
     transaction: Transaction
   ) {
-    const nextTransactions = [
-      transaction,
-      ...transactions,
-    ];
+    const nextTransactionData =
+      addTransactionToData(
+        transactionData,
+        transaction
+      );
 
-    setTransactions(nextTransactions);
+    setTransactionData(nextTransactionData);
     recordStorageResult(
       "transactions",
-      writeStoredTransactions(nextTransactions)
+      writeStoredTransactions(
+        nextTransactionData.transactions
+      )
     );
   }
 
@@ -635,32 +654,44 @@ export default function Home() {
   function handleSaveEditedTransaction(
     updatedTransaction: Transaction
   ) {
-    const nextTransactions = transactions.map(
-      (transaction) =>
-        transaction.id ===
-        updatedTransaction.id
-          ? updatedTransaction
-          : transaction
-    );
+    const savedTransaction =
+      transactionData.source === "demo"
+        ? {
+            ...updatedTransaction,
+            id: crypto.randomUUID(),
+          }
+        : updatedTransaction;
 
-    setTransactions(nextTransactions);
+    const nextTransactionData =
+      updateTransactionInData(
+        transactionData,
+        savedTransaction
+      );
+
+    setTransactionData(nextTransactionData);
     recordStorageResult(
       "transactions",
-      writeStoredTransactions(nextTransactions)
+      writeStoredTransactions(
+        nextTransactionData.transactions
+      )
     );
 
     setEditingTransaction(null);
   }
 
   function handleDeleteTransaction(id: string) {
-    const nextTransactions = transactions.filter(
-      (transaction) => transaction.id !== id
-    );
+    const nextTransactionData =
+      deleteTransactionFromData(
+        transactionData,
+        id
+      );
 
-    setTransactions(nextTransactions);
+    setTransactionData(nextTransactionData);
     recordStorageResult(
       "transactions",
-      writeStoredTransactions(nextTransactions)
+      writeStoredTransactions(
+        nextTransactionData.transactions
+      )
     );
   }
 
@@ -763,6 +794,10 @@ export default function Home() {
 
   function renderWidget(widgetId: WidgetId) {
     const size = getWidgetSize(widgetId);
+    const dataSource = getDashboardWidgetDataSource(
+      widgetId,
+      transactionData
+    );
 
     switch (widgetId) {
       case "netWorth":
@@ -770,11 +805,15 @@ export default function Home() {
           <ExpandedStatCard
             title="Net worth"
             value={formatCurrency(41_283)}
-            description="Your total financial position"
+            description={
+              dataSource === "sample"
+                ? "Sample data — example only, not calculated from your transactions"
+                : "Not available"
+            }
             size={size}
-            secondaryLabel="Assets"
+            secondaryLabel="Sample assets"
             secondaryValue={formatCurrency(52_283)}
-            insight={`Your estimated assets currently exceed liabilities by ${formatCurrency(41_283)}.`}
+            insight={`This example assumes assets exceed liabilities by ${formatCurrency(41_283)}; Finovo does not track the balances needed to calculate your net worth yet.`}
           />
         );
 
@@ -853,7 +892,11 @@ export default function Home() {
         return (
           <DashboardPanel
             title="Savings goal"
-            description="Your progress towards a house deposit"
+            description={
+              dataSource === "sample"
+                ? "Sample data — example goal, not based on your transactions"
+                : "Not available"
+            }
           >
             <div className="flex h-full flex-col">
               <div className="flex items-end justify-between gap-4">
@@ -883,9 +926,9 @@ export default function Home() {
 
                 {size.height >= 5 && (
                   <p className="mt-3 text-sm leading-6 text-zinc-500">
-                    At {formatCurrency(500)} per month, this goal
-                    would take approximately another
-                    38 months.
+                    This example assumes a {formatCurrency(500)}
+                    monthly contribution and would take
+                    approximately another 38 months.
                   </p>
                 )}
               </div>
@@ -898,6 +941,7 @@ export default function Home() {
           <div className="h-full overflow-hidden">
             <RecentTransactions
               transactions={transactions}
+              isDemo={dataSource === "demo"}
               onEditTransaction={
                 handleEditTransaction
               }
@@ -960,6 +1004,31 @@ export default function Home() {
             Customize dashboard
           </button>
         </div>
+
+        {mounted && transactionData.source === "demo" && (
+          <aside
+            aria-labelledby="demo-data-title"
+            aria-describedby="demo-data-description"
+            className="mb-6 rounded-2xl border border-blue-500/25 bg-blue-500/[0.08] px-4 py-3"
+          >
+            <p
+              id="demo-data-title"
+              className="text-sm font-semibold text-blue-200"
+            >
+              Demo data
+            </p>
+
+            <p
+              id="demo-data-description"
+              className="mt-1 text-sm leading-6 text-blue-100/80"
+            >
+              These financial values are examples and are
+              not saved as your financial data. Adding,
+              editing or deleting a sample switches to your
+              own transaction data without copying the examples.
+            </p>
+          </aside>
+        )}
 
         {isEditMode && (
           <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/[0.07] px-4 py-3 text-sm text-blue-200">
@@ -1071,6 +1140,9 @@ export default function Home() {
       {editingTransaction && (
         <AddTransactionModal
           transaction={editingTransaction}
+          isDemoTransaction={
+            transactionData.source === "demo"
+          }
           onClose={() =>
             setEditingTransaction(null)
           }

@@ -180,6 +180,36 @@ Browser-local persistence is limited to the current origin and browser profile o
 
 ---
 
+# Decision 010 — Explicit Demo Data Boundary
+
+**Status:** Accepted
+
+## Decision
+
+Finovo keeps sample transactions separate from browser-local user transactions. Transaction state has an explicit `demo` or `user` source, and sample rows exist only in the display value of demo state.
+
+A missing `finovo-transactions` key activates the first-visit demo presentation. A valid empty array is intentional user data and remains empty. Valid and partially recovered arrays remain user data after validation. Invalid or unavailable storage produces an empty recovery view with a visible warning instead of showing examples that could hide a data problem.
+
+Earlier versions could persist the known sample seed rows after a transaction action. Exact field-for-field copies of those rows are removed when loading an otherwise valid or recovered user array. A legacy payload containing only exact seed rows is treated as demo data; changed rows are preserved as user data.
+
+The first explicit add, edit or delete action in demo state switches to user state without copying or merging any sample transactions. Deleting all user transactions persists a valid empty array, so a reload remains empty. A failed write leaves the in-memory state in user mode, leaves storage untouched and displays the existing warning that the change may be lost on reload.
+
+Demo values are identified with visible, accessible text. The static net-worth and savings-goal widgets remain labelled as sample examples because Finovo does not yet have account or goal data sources.
+
+No initialization write, storage-key rename, payload migration, transaction-model change, widget-ID change or dashboard-layout change is introduced.
+
+Before this boundary, the storage fallback placed sample transactions into ordinary transaction state. Initialization did not save them, but a later add, edit or delete could persist samples alone or mixed with user entries. That behavior is no longer allowed.
+
+## Reason
+
+- Example data must never be mistaken for saved financial information.
+- Preserving valid empty datasets respects an explicit user state and prevents deleted data from reappearing.
+- Separating samples from user state prevents demonstration values from entering financial history through transaction actions.
+- Empty recovery with a warning exposes malformed or inaccessible storage instead of masking possible data loss with plausible values.
+- Narrow legacy-seed recognition repairs prior sample persistence without changing the storage schema or discarding edited user records.
+
+---
+
 # Future Decisions
 
 Every significant decision should be added here using the same format.

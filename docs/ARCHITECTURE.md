@@ -296,6 +296,37 @@ Persisted state is initialized lazily in the client component without an initial
 
 This data belongs only to the current origin and browser profile on the current device. It is not authenticated, cloud-synchronized, shared across browsers or devices, or backed up. Clearing site data or using ephemeral/private browsing can remove it.
 
+## Demo and User Transaction State
+
+`lib/transaction-data.ts` converts the transaction-storage read result into a `TransactionDataState` whose source is explicitly either `demo` or `user`. The sample array remains separate from browser-local user transactions and is supplied only for display while the state source is `demo`.
+
+Initial selection is deterministic:
+
+| Transaction storage result | Transaction state |
+|----------------------------|-------------------|
+| Missing key | Demo source with the in-code sample transactions |
+| Valid empty array | User source with an intentional empty dataset |
+| Recovered array with no retained entries | User source with an empty recovery dataset |
+| Valid or recovered array with user entries | User source with the validated entries |
+| Valid or recovered array containing only exact legacy seed rows | Demo source with the in-code sample transactions |
+| Invalid or unavailable value | User source with an empty recovery dataset and a visible storage warning |
+
+Earlier Finovo versions could persist the known sample rows through transaction actions. For compatibility, exact field-for-field copies of those legacy seed rows are removed from otherwise valid or recovered user arrays. A legacy array containing only exact seed rows is presented as demo data. Any changed row, including one that reuses a seed ID but differs in another field, remains user data so this compatibility rule does not discard an edited transaction.
+
+Demo transitions preserve the boundary:
+
+- Adding a transaction creates user state containing only the new transaction.
+- Editing a demo row creates user state containing only the edited transaction as a new user-owned record.
+- Deleting a demo row creates an intentional empty user state.
+- User-state changes continue to operate on the user array normally.
+- Deleting the last user transaction persists `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
+
+The demo array is never written to `finovo-transactions` or merged into a user write. Initialization performs no storage write. If an explicit change cannot be saved, the in-memory state remains user-owned and the existing storage warning explains that the change may be lost on reload; storage itself remains untouched.
+
+When transaction state is demo, the dashboard renders a visible, accessible explanation that the displayed values are examples and are not saved as the user's financial data. Net-worth and savings-goal values still have no user-data source, so those widgets remain explicitly labelled as sample examples in both transaction states.
+
+This boundary does not change the transaction storage key, payload shape, amount representation, widget IDs or dashboard layouts.
+
 ---
 
 # Dashboard

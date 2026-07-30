@@ -526,6 +526,8 @@ If estimates are shown, clearly label them.
 - Never exaggerate returns.
 - Explain assumptions.
 - Distinguish facts from estimates.
+- Clearly label demo and sample values wherever they could be mistaken for a user's financial information.
+- Never persist or merge demo data into saved user data.
 - Be transparent about limitations.
 - Never manipulate users.
 

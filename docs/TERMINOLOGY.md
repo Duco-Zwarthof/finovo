@@ -32,3 +32,19 @@ Monthly surplus is not a savings contribution, savings balance or savings goal.
 ## Surplus rate
 
 Monthly surplus divided by monthly income, expressed as a percentage. The surplus rate is unavailable when monthly income is zero.
+
+---
+
+# Data Sources
+
+## Demo data
+
+Fixed example data shown to demonstrate Finovo. Demo data is visibly labelled, is not the user's financial information and is never persisted or merged into user transaction data.
+
+## User transaction data
+
+Validated browser-local transactions created by the user or retained from existing saved data. An empty user transaction array is a valid intentional dataset and does not activate demo data.
+
+## Demo presentation state
+
+The first-visit presentation used when no transaction value exists in browser storage. Recognized legacy sample-only storage also uses this state. The first explicit add, edit or delete action exits it without copying the example transactions into user data.
