@@ -256,7 +256,7 @@ This boundary changes presentation only. Domain transactions now carry both the 
 
 The domain `Transaction` temporarily retains `amount` alongside required `amountMinor`. The two values are compatible only when the decimal euro amount converts exactly to the same whole-cent integer. New form values derive cents from the decimal input string instead of using floating-point multiplication as a canonical representation.
 
-This is a preparatory domain change only. Persisted transaction V1 remains amount-only, storage reads derive `amountMinor` after validating `amount`, and V1 writes deliberately omit `amountMinor`. No V2 envelope, storage-key change or persisted-record migration is introduced.
+Persisted transaction V2 now stores canonical `amountMinor`. V1 and legacy amount-only reads derive `amountMinor` after validating `amount`; V2 reads derive the temporary domain `amount` compatibility value from validated minor units. No storage-key change or initialization migration is introduced.
 
 ---
 
@@ -288,29 +288,29 @@ The dashboard currently persists three independent state slices in browser `loca
 - `finovo-dashboard-widgets` stores widget visibility settings.
 - `finovo-dashboard-layouts-v2` stores responsive widget layouts, including position and dimensions.
 
-`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the amount-only V1 persisted transaction model separately from the dual-field domain model in `lib/types.ts`.
+`lib/storage.ts` is the boundary for reading, parsing, validating, normalizing, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the readable amount-only V1 model and current minor-unit V2 model separately from the dual-field domain model in `lib/types.ts`.
 
-New transaction writes use the V1 envelope:
+New transaction writes use the V2 envelope:
 
 ```ts
 {
-  version: 1,
-  transactions: Transaction[]
+  version: 2,
+  transactions: PersistedTransactionV2[]
 }
 ```
 
-The storage key and transaction values remain unchanged. Existing unversioned transaction arrays remain readable and are not rewritten during initialization. Their validated, user-owned transactions migrate through the normal storage boundary only when the next explicit add, edit or delete is successfully written in the current V1 format. A valid empty legacy array remains intentional empty user data.
+The storage key remains unchanged. Existing V1 envelopes and unversioned transaction arrays remain readable and are not rewritten during initialization. Their validated, user-owned transactions migrate through the normal storage boundary only when the next explicit add, edit or delete is successfully written in V2. A valid empty legacy or V1 array remains intentional empty user data.
 
 Stored JSON is treated as untrusted input:
 
-- The transaction envelope must use the supported version and contain a transaction array. Unsupported versions and malformed envelopes are invalid.
+- V1 entries validate decimal euro `amount` and normalize it into both domain amount fields. V2 entries validate safe, non-negative integer `amountMinor` and derive the temporary domain `amount` value. Unsupported versions and malformed envelopes are invalid.
 - Transaction entries must contain a non-empty ID and title, a supported category and type, a finite positive amount and a date accepted by the strict local-date utility.
 - In a partially invalid transaction array, valid entries are retained in their original order. Invalid entries and later entries with duplicate IDs are discarded.
 - Widget settings are accepted only for known widget IDs with boolean values. Invalid or missing fields use their in-code defaults without resetting other valid settings.
 - Responsive layouts accept only known widget IDs and valid grid positions and dimensions. Missing or invalid widget layouts use their breakpoint defaults.
 - Layout updates merge with the complete saved layout so hiding a widget does not erase its stored position or size.
 
-Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, missing, invalid and partially recovered payloads remain untouched. The next successful user change writes valid or partially recovered transaction data using the V1 envelope; malformed and unsupported transaction payloads remain untouched even after an in-memory transaction change. Dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, leave the prior stored payload unchanged and cause the UI to warn that changes may not survive a reload.
+Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, V1, missing, invalid and partially recovered payloads remain untouched. The next successful user change writes valid or partially recovered transaction data using the V2 envelope; malformed and unsupported transaction payloads remain untouched even after an in-memory transaction change. Dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, leave the prior stored payload unchanged and cause the UI to warn that changes may not survive a reload.
 
 Persisted state is initialized lazily in the client component without an initial persistence write. Browser globals are guarded during server rendering, and the responsive dashboard content waits for its client-side container measurement so server fallback state cannot cause a hydration mismatch.
 
@@ -339,13 +339,13 @@ Demo transitions preserve the boundary:
 - Editing a demo row creates user state containing only the edited transaction as a new user-owned record.
 - Deleting a demo row creates an intentional empty user state.
 - User-state changes continue to operate on the user array normally.
-- Deleting the last user transaction persists a V1 envelope whose `transactions` value is `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
+- Deleting the last user transaction persists a V2 envelope whose `transactions` value is `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
 
 The demo array is never written to `finovo-transactions` or merged into a user write. Initialization performs no storage write. If an explicit change cannot be saved, the in-memory state remains user-owned and the existing storage warning explains that the change may be lost on reload; storage itself remains untouched.
 
 When transaction state is demo, the dashboard renders a visible, accessible explanation that the displayed values are examples and are not saved as the user's financial data. Net-worth and savings-goal values still have no user-data source, so those widgets remain explicitly labelled as sample examples in both transaction states.
 
-The demo boundary does not change the transaction storage key, amount representation, widget IDs or dashboard layouts. Transaction persistence now uses the separately documented V1 envelope without changing demo-state selection or transitions.
+The demo boundary does not change the transaction storage key, widget IDs or dashboard layouts. Transaction persistence now uses the separately documented V2 envelope without changing demo-state selection or transitions.
 
 ---
 

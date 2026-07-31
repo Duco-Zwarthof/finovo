@@ -5,10 +5,14 @@ import type {
 } from "react-grid-layout";
 
 import { parseLocalDate } from "./date";
-import { euroAmountToMinor } from "./transaction-amount";
+import {
+  amountMinorToEuroAmount,
+  euroAmountToMinor,
+} from "./transaction-amount";
 import {
   TRANSACTION_STORAGE_VERSION,
-  createPersistedTransactionDataV1,
+  TRANSACTION_STORAGE_VERSION_V1,
+  createPersistedTransactionDataV2,
 } from "./persisted-transactions";
 import {
   TRANSACTION_CATEGORIES,
@@ -149,7 +153,7 @@ function isTransactionCategory(
   );
 }
 
-function parseTransaction(
+function parsePersistedTransactionV1(
   value: unknown
 ): Transaction | null {
   if (!isRecord(value)) {
@@ -189,8 +193,55 @@ function parseTransaction(
   };
 }
 
-export function validateStoredTransactions(
+function parsePersistedTransactionV2(
   value: unknown
+): Transaction | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const {
+    id,
+    title,
+    amountMinor,
+    type,
+    category,
+    date,
+  } = value;
+  const amount =
+    typeof amountMinor === "number"
+      ? amountMinorToEuroAmount(amountMinor)
+      : null;
+
+  if (
+    typeof id !== "string" ||
+    id.trim().length === 0 ||
+    typeof title !== "string" ||
+    title.trim().length === 0 ||
+    typeof amountMinor !== "number" ||
+    amount === null ||
+    !isTransactionType(type) ||
+    !isTransactionCategory(category) ||
+    typeof date !== "string" ||
+    !parseLocalDate(date)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    title,
+    amount,
+    amountMinor,
+    type,
+    category,
+    date,
+  };
+}
+
+function validateTransactionArray(
+  value: unknown,
+  parseEntry: (entry: unknown) => Transaction | null
 ): StorageValidationResult<Transaction[]> | null {
   if (!Array.isArray(value)) {
     return null;
@@ -201,7 +252,7 @@ export function validateStoredTransactions(
   let recovered = false;
 
   value.forEach((entry) => {
-    const transaction = parseTransaction(entry);
+    const transaction = parseEntry(entry);
 
     if (
       !transaction ||
@@ -221,7 +272,29 @@ export function validateStoredTransactions(
   };
 }
 
+export function validateStoredTransactions(
+  value: unknown
+): StorageValidationResult<Transaction[]> | null {
+  return validateTransactionArray(
+    value,
+    parsePersistedTransactionV1
+  );
+}
+
 export function validatePersistedTransactionDataV1(
+  value: unknown
+): StorageValidationResult<Transaction[]> | null {
+  if (
+    !isRecord(value) ||
+    value.version !== TRANSACTION_STORAGE_VERSION_V1
+  ) {
+    return null;
+  }
+
+  return validateStoredTransactions(value.transactions);
+}
+
+export function validatePersistedTransactionDataV2(
   value: unknown
 ): StorageValidationResult<Transaction[]> | null {
   if (
@@ -231,7 +304,10 @@ export function validatePersistedTransactionDataV1(
     return null;
   }
 
-  return validateStoredTransactions(value.transactions);
+  return validateTransactionArray(
+    value.transactions,
+    parsePersistedTransactionV2
+  );
 }
 
 function validateReadableTransactionData(
@@ -241,7 +317,14 @@ function validateReadableTransactionData(
     return validateStoredTransactions(value);
   }
 
-  return validatePersistedTransactionDataV1(value);
+  if (
+    isRecord(value) &&
+    value.version === TRANSACTION_STORAGE_VERSION_V1
+  ) {
+    return validatePersistedTransactionDataV1(value);
+  }
+
+  return validatePersistedTransactionDataV2(value);
 }
 
 export function validateStoredWidgetSettings(
@@ -520,7 +603,7 @@ export function writeStoredTransactions(
 ): StorageWriteResult {
   return writeStoredJson(
     STORAGE_KEYS.transactions,
-    createPersistedTransactionDataV1(transactions),
+    createPersistedTransactionDataV2(transactions),
     storage
   );
 }

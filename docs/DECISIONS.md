@@ -212,7 +212,7 @@ Before this boundary, the storage fallback placed sample transactions into ordin
 
 # Decision 011 — Versioned Transaction Persistence Envelope
 
-**Status:** Accepted
+**Status:** Superseded by Decision 013
 
 ## Decision
 
@@ -251,7 +251,7 @@ Domain transactions use `amountMinor` as their canonical amount representation. 
 
 The existing euro `amount` number remains temporarily required for backward compatibility. Both fields must describe the same value. Pure helpers centralize exact decimal-to-minor conversion, minor-value validation, compatibility checks and temporary conversion back to euros.
 
-This decision does not introduce transaction persistence V2. Persisted V1 records remain amount-only: reads derive `amountMinor` for the domain model and writes omit it. Currency formatting, dashboard calculations, storage keys, demo behavior and persisted-data migration remain unchanged.
+At the time of this decision, transaction persistence V2 was not introduced. Persisted V1 records remained amount-only: reads derived `amountMinor` for the domain model and writes omitted it. Decision 013 later supersedes that write format while retaining V1 reads. Currency formatting, dashboard calculations, storage keys and demo behavior remain unchanged.
 
 ## Reason
 
@@ -259,6 +259,27 @@ This decision does not introduce transaction persistence V2. Persisted V1 record
 - Retaining `amount` avoids combining a domain preparation task with a persisted-data migration.
 - Keeping V1 explicitly amount-only prevents an unversioned schema change.
 - Centralized conversion and validation prevent inconsistent rounding rules.
+
+---
+
+# Decision 013 — Minor-Unit Transaction Persistence V2
+
+**Status:** Accepted
+
+## Decision
+
+New transaction writes use a V2 envelope under the existing `finovo-transactions` key. V2 transaction entries store canonical, validated `amountMinor` and omit the temporary domain `amount` field.
+
+V1 envelopes and legacy unversioned arrays remain readable. Their decimal euro amounts normalize into domain `amount` and `amountMinor` values. V2 reads validate minor units and derive the temporary domain `amount` value so visible behavior and existing calculations remain unchanged.
+
+Initialization never rewrites storage. Valid V1 and legacy user data migrates to V2 only through the existing next-successful-add, edit or delete path. Demo seeds remain excluded, malformed and unsupported payloads remain untouched, and failed writes preserve the prior payload.
+
+## Reason
+
+- Persisting integer minor units makes the canonical monetary representation durable.
+- Explicit V1 and V2 validators preserve compatibility without a generic migration framework.
+- Reusing the established mutation path avoids silent initialization writes.
+- Retaining the storage key, domain compatibility field and UI behavior keeps the migration narrowly scoped.
 
 ---
 

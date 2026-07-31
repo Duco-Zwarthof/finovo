@@ -4,6 +4,7 @@ import { sampleTransactions } from "./sample-transactions";
 import {
   TRANSACTION_STORAGE_VERSION,
   createPersistedTransactionDataV1,
+  createPersistedTransactionDataV2,
 } from "./persisted-transactions";
 import {
   STORAGE_KEYS,
@@ -344,7 +345,7 @@ describe("transaction data persistence boundary", () => {
     ).toEqual({ status: "written" });
     expect(values.get(STORAGE_KEYS.transactions)).toBe(
       JSON.stringify(
-        createPersistedTransactionDataV1([userTransaction])
+        createPersistedTransactionDataV2([userTransaction])
       )
     );
 
@@ -404,7 +405,7 @@ describe("transaction data persistence boundary", () => {
     ["delete", (state: ReturnType<typeof createTransactionDataState>) =>
       deleteTransactionFromData(state, userTransaction.id)],
   ] as const)(
-    "writes V1 after the first successful legacy %s mutation",
+    "writes V2 after the first successful legacy %s mutation",
     (_operation, mutate) => {
       const rawValue = JSON.stringify([userTransaction]);
       const { storage, values } = createFakeStorage({
@@ -425,7 +426,7 @@ describe("transaction data persistence boundary", () => {
       expect(
         JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
       ).toEqual(
-        createPersistedTransactionDataV1(
+        createPersistedTransactionDataV2(
           nextState.transactions
         )
       );
@@ -452,7 +453,7 @@ describe("transaction data persistence boundary", () => {
     expect(
       JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
     ).toEqual(
-      createPersistedTransactionDataV1(
+      createPersistedTransactionDataV2(
         nextState.transactions
       )
     );
@@ -476,6 +477,30 @@ describe("transaction data persistence boundary", () => {
 
   it("leaves the original legacy payload unchanged when its first mutation write fails", () => {
     const rawValue = JSON.stringify([userTransaction]);
+    const { storage, values } = createFakeStorage(
+      { [STORAGE_KEYS.transactions]: rawValue },
+      { setThrows: true }
+    );
+    const initialRead = readStoredTransactions([], storage);
+    const nextState = addTransactionToData(
+      createTransactionDataState(initialRead),
+      { ...userTransaction, id: "new-user-transaction" }
+    );
+
+    expect(
+      persistMutation(
+        initialRead,
+        nextState.transactions,
+        storage
+      )
+    ).toEqual({ status: "failed" });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+  });
+
+  it("leaves the original V1 payload unchanged when its migration write fails", () => {
+    const rawValue = JSON.stringify(
+      createPersistedTransactionDataV1([userTransaction])
+    );
     const { storage, values } = createFakeStorage(
       { [STORAGE_KEYS.transactions]: rawValue },
       { setThrows: true }
@@ -532,7 +557,7 @@ describe("transaction data persistence boundary", () => {
     }
   );
 
-  it("keeps already-V1 data in V1 through the normal mutation path", () => {
+  it("migrates V1 data to V2 through the normal mutation path", () => {
     const rawValue = JSON.stringify(
       createPersistedTransactionDataV1([userTransaction])
     );
@@ -552,7 +577,7 @@ describe("transaction data persistence boundary", () => {
     expect(
       JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
     ).toEqual(
-      createPersistedTransactionDataV1(
+      createPersistedTransactionDataV2(
         nextState.transactions
       )
     );
