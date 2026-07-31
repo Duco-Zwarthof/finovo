@@ -49,6 +49,7 @@ Implemented functionality:
 - Visibly labelled, display-only demo transactions when no saved transaction value exists
 - Deterministic separation between demo transactions and browser-local user transactions, including intentional empty datasets
 - Cent-accurate domain transaction amounts using canonical whole-euro-cent values while retaining temporary euro-amount compatibility
+- Cent-accurate monthly summaries and cashflow chart aggregation with euro conversion only at presentation boundaries
 
 Current limitations:
 

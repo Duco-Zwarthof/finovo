@@ -5,6 +5,7 @@ import {
   areTransactionAmountsCompatible,
   euroAmountToMinor,
   isValidAmountMinor,
+  minorUnitsToEuroAmount,
 } from "./transaction-amount";
 
 describe("transaction amount conversion", () => {
@@ -37,6 +38,12 @@ describe("transaction amount conversion", () => {
     [0, 0],
   ])("converts %i cents to euros", (amountMinor, expected) => {
     expect(amountMinorToEuroAmount(amountMinor)).toBe(expected);
+  });
+
+  it("converts signed calculated minor-unit totals to euros", () => {
+    expect(minorUnitsToEuroAmount(-1234)).toBe(-12.34);
+    expect(minorUnitsToEuroAmount(1234)).toBe(12.34);
+    expect(minorUnitsToEuroAmount(1.5)).toBeNull();
   });
 });
 

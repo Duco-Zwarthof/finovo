@@ -231,12 +231,15 @@ Examples:
 
 ## Current Monthly Summary
 
-Current-month reporting is implemented with two pure utility boundaries:
+Current-month reporting is implemented with pure utility boundaries:
 
 - `lib/date.ts` strictly parses and formats local `YYYY-MM-DD` calendar dates and determines calendar-month membership.
-- `lib/finance.ts` aggregates current-month income and expenses, then derives monthly surplus and surplus rate.
+- `lib/finance.ts` aggregates income and expenses in integer minor units, then derives minor-unit surplus and the surplus rate from those integer inputs.
+- `lib/cashflow.ts` aggregates monthly and quarterly chart buckets in minor units and converts each completed bucket to euros once for chart presentation.
 
-UI components consume these results and do not define their own date parsers or monthly financial formulas. A reference date can be supplied to the financial summary function so reporting-period behavior remains deterministic in tests.
+UI components consume these results and do not define their own date parsers or monthly financial formulas. Monthly card totals remain in cents until `app/page.tsx` converts them to euros for formatting. A reference date can be supplied to the financial summary and monthly cashflow functions so reporting-period behavior remains deterministic in tests.
+
+All aggregation uses `amountMinor`; the temporary transaction `amount` compatibility field is not a calculation input. Shared safe-integer addition rejects totals outside JavaScript's safe integer range. Surplus may be negative even though individual transaction minor amounts remain non-negative.
 
 Invalid or impossible transaction dates are excluded from date-based summaries and chart groupings rather than normalized into another date.
 

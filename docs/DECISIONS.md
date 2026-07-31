@@ -251,6 +251,8 @@ Domain transactions use `amountMinor` as their canonical amount representation. 
 
 The existing euro `amount` number remains temporarily required for backward compatibility. Both fields must describe the same value. Pure helpers centralize exact decimal-to-minor conversion, minor-value validation, compatibility checks and temporary conversion back to euros.
 
+Financial aggregation uses `amountMinor` exclusively. Income, expenses, surplus, monthly summaries and cashflow chart buckets retain safe integer cents throughout their calculations, and convert to decimal euros only at final UI or chart-data boundaries. Surplus-rate inputs are the integer minor-unit totals. The temporary `amount` field remains available only for compatibility consumers until its separately scoped removal.
+
 At the time of this decision, transaction persistence V2 was not introduced. Persisted V1 records remained amount-only: reads derived `amountMinor` for the domain model and writes omitted it. Decision 013 later supersedes that write format while retaining V1 reads. Currency formatting, dashboard calculations, storage keys and demo behavior remain unchanged.
 
 ## Reason

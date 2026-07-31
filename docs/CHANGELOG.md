@@ -13,6 +13,7 @@
 - Added focused coverage for legacy transaction migration through add, edit and delete operations, including demo-data and failure boundaries.
 - Added a required canonical `amountMinor` domain field with pure whole-cent conversion, validation and compatibility helpers.
 - Added a V2 persisted transaction envelope that stores canonical whole-cent `amountMinor` values while retaining V1 reads.
+- Added shared safe-integer minor-unit helpers for income, expense and surplus totals.
 
 ### Changed
 
@@ -25,6 +26,7 @@
 - Formalized legacy transaction migration on the next successful user mutation while preserving valid empty data and leaving malformed or unsupported payloads untouched.
 - Kept transaction persistence V1 amount-only while deriving cent-accurate domain values at the storage and transaction-input boundaries.
 - Changed successful transaction writes to V2; legacy arrays and V1 envelopes migrate only through the existing user-mutation path and remain untouched during initialization.
+- Changed monthly dashboard summaries and monthly/quarterly cashflow aggregation to calculate exclusively with `amountMinor`, preserving existing euro output.
 
 ### Fixed
 

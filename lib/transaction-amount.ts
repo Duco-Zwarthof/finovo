@@ -44,6 +44,14 @@ export function amountMinorToEuroAmount(
     : null;
 }
 
+export function minorUnitsToEuroAmount(
+  amountMinor: number
+): number | null {
+  return Number.isSafeInteger(amountMinor)
+    ? amountMinor / 100
+    : null;
+}
+
 export function areTransactionAmountsCompatible(
   amount: number,
   amountMinor: number

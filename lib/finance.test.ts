@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { Transaction } from "./types";
-import { calculateMonthlyFinancialSummary } from "./finance";
+import {
+  addMinorUnits,
+  calculateExpensesMinor,
+  calculateIncomeMinor,
+  calculateMonthlyFinancialSummary,
+  calculateSurplusMinor,
+} from "./finance";
 
 function createTransaction({
   id,
@@ -51,9 +57,9 @@ describe("calculateMonthlyFinancialSummary", () => {
         julyReference
       )
     ).toEqual({
-      income: 1_000,
-      expenses: 250,
-      surplus: 750,
+      incomeMinor: 100_000,
+      expensesMinor: 25_000,
+      surplusMinor: 75_000,
       surplusRate: 75,
     });
   });
@@ -103,9 +109,9 @@ describe("calculateMonthlyFinancialSummary", () => {
         julyReference
       )
     ).toEqual({
-      income: 2_000,
-      expenses: 500,
-      surplus: 1_500,
+      incomeMinor: 200_000,
+      expensesMinor: 50_000,
+      surplusMinor: 150_000,
       surplusRate: 75,
     });
   });
@@ -125,9 +131,9 @@ describe("calculateMonthlyFinancialSummary", () => {
     );
 
     expect(summary).toEqual({
-      income: 0,
-      expenses: 100,
-      surplus: -100,
+      incomeMinor: 0,
+      expensesMinor: 10_000,
+      surplusMinor: -10_000,
       surplusRate: null,
     });
   });
@@ -156,9 +162,9 @@ describe("calculateMonthlyFinancialSummary", () => {
         julyReference
       )
     ).toEqual({
-      income: 200,
-      expenses: 300,
-      surplus: -100,
+      incomeMinor: 20_000,
+      expensesMinor: 30_000,
+      surplusMinor: -10_000,
       surplusRate: -50,
     });
   });
@@ -184,7 +190,7 @@ describe("calculateMonthlyFinancialSummary", () => {
       julyReference
     );
 
-    expect(summary.surplus).toBe(-4);
+    expect(summary.surplusMinor).toBe(-400);
     expect(summary.surplusRate).toBeCloseTo(-0.4);
   });
 
@@ -192,10 +198,41 @@ describe("calculateMonthlyFinancialSummary", () => {
     expect(
       calculateMonthlyFinancialSummary([], julyReference)
     ).toEqual({
-      income: 0,
-      expenses: 0,
-      surplus: 0,
+      incomeMinor: 0,
+      expensesMinor: 0,
+      surplusMinor: 0,
       surplusRate: null,
     });
+  });
+});
+
+describe("minor-unit financial totals", () => {
+  const transactions = [
+    createTransaction({
+      id: "income",
+      amount: 999,
+      amountMinor: 1,
+      type: "income",
+      date: "2026-07-01",
+    }),
+    createTransaction({
+      id: "expense",
+      amount: 999,
+      amountMinor: 2,
+      type: "expense",
+      date: "2026-07-01",
+    }),
+  ];
+
+  it("uses amountMinor instead of the compatibility amount", () => {
+    expect(calculateIncomeMinor(transactions)).toBe(1);
+    expect(calculateExpensesMinor(transactions)).toBe(2);
+    expect(calculateSurplusMinor(1, 2)).toBe(-1);
+  });
+
+  it("rejects unsafe minor-unit totals", () => {
+    expect(() =>
+      addMinorUnits(Number.MAX_SAFE_INTEGER, 1)
+    ).toThrow(RangeError);
   });
 });

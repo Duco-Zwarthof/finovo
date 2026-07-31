@@ -37,6 +37,7 @@ import {
   calculateMonthlyFinancialSummary,
 } from "@/lib/finance";
 import { formatCurrency } from "@/lib/money";
+import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 import {
   STORAGE_KEYS,
   mergeDashboardLayoutsPreservingHidden,
@@ -584,14 +585,20 @@ export default function Home() {
     });
 
   const {
-    income: monthlyIncome,
-    expenses: monthlyExpenses,
-    surplus: monthlySurplus,
+    incomeMinor: monthlyIncomeMinor,
+    expensesMinor: monthlyExpensesMinor,
+    surplusMinor: monthlySurplusMinor,
     surplusRate,
   } = calculateMonthlyFinancialSummary(
     transactions,
     new Date()
   );
+  const monthlyIncome =
+    minorUnitsToEuroAmount(monthlyIncomeMinor) ?? 0;
+  const monthlyExpenses =
+    minorUnitsToEuroAmount(monthlyExpensesMinor) ?? 0;
+  const monthlySurplus =
+    minorUnitsToEuroAmount(monthlySurplusMinor) ?? 0;
 
   const storageNotice = getStorageNotice(storageHealth);
 

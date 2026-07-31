@@ -15,6 +15,10 @@ import {
 import type { Transaction } from "@/lib/types";
 import { parseLocalDate } from "@/lib/date";
 import {
+  createMonthlyCashflowData,
+  createQuarterlyCashflowData,
+} from "@/lib/cashflow";
+import {
   formatCompactCurrency,
   formatCurrency,
 } from "@/lib/money";
@@ -24,13 +28,6 @@ type CashflowChartProps = {
 };
 
 type ViewMode = "monthly" | "quarterly";
-
-type PeriodDataPoint = {
-  period: string;
-  fullPeriod: string;
-  income: number;
-  expenses: number;
-};
 
 type TooltipPayloadItem = {
   name: string;
@@ -43,149 +40,6 @@ type CustomTooltipProps = {
   label?: string;
   payload?: TooltipPayloadItem[];
 };
-
-const monthFormatter = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-});
-
-const fullMonthFormatter = new Intl.DateTimeFormat("en-GB", {
-  month: "long",
-  year: "numeric",
-});
-
-function createMonthlyCashflowData(
-  transactions: Transaction[],
-  monthCount: number
-): PeriodDataPoint[] {
-  const now = new Date();
-
-  const months = Array.from(
-    { length: monthCount },
-    (_, index) => {
-      const date = new Date(
-        now.getFullYear(),
-        now.getMonth() - monthCount + 1 + index,
-        1
-      );
-
-      return {
-        year: date.getFullYear(),
-        monthIndex: date.getMonth(),
-        period: monthFormatter.format(date),
-        fullPeriod: fullMonthFormatter.format(date),
-        income: 0,
-        expenses: 0,
-      };
-    }
-  );
-
-  transactions.forEach((transaction) => {
-    const transactionDate = parseLocalDate(
-      transaction.date
-    );
-
-    if (!transactionDate) {
-      return;
-    }
-
-    const matchingMonth = months.find(
-      (month) =>
-        month.year === transactionDate.getFullYear() &&
-        month.monthIndex === transactionDate.getMonth()
-    );
-
-    if (!matchingMonth) {
-      return;
-    }
-
-    if (transaction.type === "income") {
-      matchingMonth.income += transaction.amount;
-    } else {
-      matchingMonth.expenses += transaction.amount;
-    }
-  });
-
-  return months.map((month) => ({
-    period: month.period,
-    fullPeriod: month.fullPeriod,
-    income: month.income,
-    expenses: month.expenses,
-  }));
-}
-
-function createQuarterlyCashflowData(
-  transactions: Transaction[],
-  selectedYear: number
-): PeriodDataPoint[] {
-  const quarters = [
-    {
-      quarter: 1,
-      period: "Q1",
-      fullPeriod: `Quarter 1, ${selectedYear}`,
-      income: 0,
-      expenses: 0,
-    },
-    {
-      quarter: 2,
-      period: "Q2",
-      fullPeriod: `Quarter 2, ${selectedYear}`,
-      income: 0,
-      expenses: 0,
-    },
-    {
-      quarter: 3,
-      period: "Q3",
-      fullPeriod: `Quarter 3, ${selectedYear}`,
-      income: 0,
-      expenses: 0,
-    },
-    {
-      quarter: 4,
-      period: "Q4",
-      fullPeriod: `Quarter 4, ${selectedYear}`,
-      income: 0,
-      expenses: 0,
-    },
-  ];
-
-  transactions.forEach((transaction) => {
-    const transactionDate = parseLocalDate(
-      transaction.date
-    );
-
-    if (!transactionDate) {
-      return;
-    }
-
-    if (transactionDate.getFullYear() !== selectedYear) {
-      return;
-    }
-
-    const quarterNumber =
-      Math.floor(transactionDate.getMonth() / 3) + 1;
-
-    const matchingQuarter = quarters.find(
-      (quarter) => quarter.quarter === quarterNumber
-    );
-
-    if (!matchingQuarter) {
-      return;
-    }
-
-    if (transaction.type === "income") {
-      matchingQuarter.income += transaction.amount;
-    } else {
-      matchingQuarter.expenses += transaction.amount;
-    }
-  });
-
-  return quarters.map((quarter) => ({
-    period: quarter.period,
-    fullPeriod: quarter.fullPeriod,
-    income: quarter.income,
-    expenses: quarter.expenses,
-  }));
-}
 
 function getAvailableYears(
   transactions: Transaction[]
