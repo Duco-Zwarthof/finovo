@@ -248,7 +248,15 @@ Currency presentation is centralized in `lib/money.ts` and remains separate from
 - Compact EUR formatting is reserved for chart axes; cards, transactions, filters, prose and chart tooltips use exact formatting.
 - Editable amount fields use the currency symbol derived by the shared formatter while retaining their existing numeric input values.
 
-This boundary changes presentation only. Transaction amounts remain numbers in the existing transaction and storage schemas.
+This boundary changes presentation only. Domain transactions now carry both the temporary euro `amount` compatibility value and the canonical `amountMinor` whole-cent value. Currency formatting output remains unchanged.
+
+## Transaction Amount Model
+
+`lib/transaction-amount.ts` owns pure conversion, validation and compatibility checks for transaction amounts. `amountMinor` is the canonical domain representation: a finite, non-negative safe integer containing whole euro cents. Transaction direction remains represented by `type`, so expenses do not use negative amounts.
+
+The domain `Transaction` temporarily retains `amount` alongside required `amountMinor`. The two values are compatible only when the decimal euro amount converts exactly to the same whole-cent integer. New form values derive cents from the decimal input string instead of using floating-point multiplication as a canonical representation.
+
+This is a preparatory domain change only. Persisted transaction V1 remains amount-only, storage reads derive `amountMinor` after validating `amount`, and V1 writes deliberately omit `amountMinor`. No V2 envelope, storage-key change or persisted-record migration is introduced.
 
 ---
 
@@ -280,7 +288,7 @@ The dashboard currently persists three independent state slices in browser `loca
 - `finovo-dashboard-widgets` stores widget visibility settings.
 - `finovo-dashboard-layouts-v2` stores responsive widget layouts, including position and dimensions.
 
-`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the persisted transaction model separately from the domain model in `lib/types.ts`.
+`lib/storage.ts` is the boundary for reading, parsing, validating, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the amount-only V1 persisted transaction model separately from the dual-field domain model in `lib/types.ts`.
 
 New transaction writes use the V1 envelope:
 

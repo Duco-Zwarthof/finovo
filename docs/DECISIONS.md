@@ -229,7 +229,7 @@ The persisted envelope is defined separately from the domain transaction model. 
 
 Existing unversioned transaction arrays remain readable and are not rewritten during initialization. A valid empty legacy array remains intentional empty user data. On the next successful explicit add, edit or delete, the normal persistence path writes the resulting user-owned transactions in the current V1 format. Exact demo seeds are excluded by the existing demo-data boundary and are never migrated or persisted.
 
-The transaction fields, values, amount representation, storage key, demo behavior and application-facing storage API remain unchanged. Malformed payloads and unsupported versions are treated as invalid stored data, follow the existing safe fallback and warning behavior, and remain untouched by later in-memory transaction changes. A failed migration write leaves the prior stored legacy payload unchanged.
+At the time of this decision, the transaction fields, values, amount representation, storage key, demo behavior and application-facing storage API remained unchanged. Decision 012 later supersedes only the domain amount representation while leaving persisted V1 amount-only. Malformed payloads and unsupported versions are treated as invalid stored data, follow the existing safe fallback and warning behavior, and remain untouched by later in-memory transaction changes. A failed migration write leaves the prior stored legacy payload unchanged.
 
 ## Reason
 
@@ -238,6 +238,27 @@ The transaction fields, values, amount representation, storage key, demo behavio
 - Continuing to read legacy arrays preserves existing user behavior without silently rewriting browser data.
 - Centralized validation keeps untrusted stored JSON outside dashboard and financial logic.
 - Retaining the existing key avoids an unnecessary second storage location.
+
+---
+
+# Decision 012 — Cent-Accurate Transaction Domain Amounts
+
+**Status:** Accepted
+
+## Decision
+
+Domain transactions use `amountMinor` as their canonical amount representation. It contains whole euro cents and must be a finite, non-negative safe integer. Income or expense direction continues to come from the transaction `type`, not from a negative amount.
+
+The existing euro `amount` number remains temporarily required for backward compatibility. Both fields must describe the same value. Pure helpers centralize exact decimal-to-minor conversion, minor-value validation, compatibility checks and temporary conversion back to euros.
+
+This decision does not introduce transaction persistence V2. Persisted V1 records remain amount-only: reads derive `amountMinor` for the domain model and writes omit it. Currency formatting, dashboard calculations, storage keys, demo behavior and persisted-data migration remain unchanged.
+
+## Reason
+
+- Whole cents provide a deterministic canonical representation for future financial calculations.
+- Retaining `amount` avoids combining a domain preparation task with a persisted-data migration.
+- Keeping V1 explicitly amount-only prevents an unversioned schema change.
+- Centralized conversion and validation prevent inconsistent rounding rules.
 
 ---
 

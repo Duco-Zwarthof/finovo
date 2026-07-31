@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Transaction } from "./types";
 import {
   TRANSACTION_STORAGE_VERSION,
+  createPersistedTransactionDataV1,
   type PersistedTransactionDataV1,
 } from "./persisted-transactions";
 import {
@@ -24,6 +25,7 @@ const validTransaction: Transaction = {
   id: "salary-1",
   title: "Salary",
   amount: 3_250.5,
+  amountMinor: 325_050,
   type: "income",
   category: "Salary",
   date: "2026-07-31",
@@ -34,6 +36,7 @@ const fallbackTransactions: Transaction[] = [
     id: "fallback-1",
     title: "Fallback transaction",
     amount: 10,
+    amountMinor: 1_000,
     type: "expense",
     category: "Other",
     date: "2026-07-01",
@@ -43,10 +46,7 @@ const fallbackTransactions: Transaction[] = [
 function persistedTransactionData(
   transactions: Transaction[]
 ): PersistedTransactionDataV1 {
-  return {
-    version: TRANSACTION_STORAGE_VERSION,
-    transactions,
-  };
+  return createPersistedTransactionDataV1(transactions);
 }
 
 const defaultWidgetSettings: WidgetSettings = {
@@ -151,6 +151,23 @@ describe("stored transaction validation", () => {
     });
   });
 
+  it("derives a zero minor amount from a valid zero euro amount", () => {
+    expect(
+      validateStoredTransactions([
+        { ...validTransaction, amount: 0 },
+      ])
+    ).toEqual({
+      value: [
+        {
+          ...validTransaction,
+          amount: 0,
+          amountMinor: 0,
+        },
+      ],
+      recovered: false,
+    });
+  });
+
   it.each(["transfer", "Income", ""])(
     "rejects the unsupported transaction type %s",
     (type) => {
@@ -205,7 +222,7 @@ describe("stored transaction validation", () => {
   it.each([
     { ...validTransaction, title: " " },
     { ...validTransaction, category: "Unknown" },
-    { ...validTransaction, amount: 0 },
+    { ...validTransaction, amount: -0.01 },
     { ...validTransaction, amount: -1 },
   ])("rejects transactions with invalid required fields", (entry) => {
     expect(validateStoredTransactions([entry])).toEqual({
@@ -220,6 +237,7 @@ describe("stored transaction validation", () => {
       id: "groceries-1",
       title: "Groceries",
       amount: 82.4,
+      amountMinor: 8_240,
       type: "expense",
       category: "Groceries",
     };
@@ -453,6 +471,11 @@ describe("storage writes and removal", () => {
         persistedTransactionData([validTransaction])
       )
     );
+    expect(
+      JSON.parse(
+        values.get(STORAGE_KEYS.transactions) ?? ""
+      ).transactions[0]
+    ).not.toHaveProperty("amountMinor");
   });
 
   it("writes an empty transaction list inside the current envelope", () => {

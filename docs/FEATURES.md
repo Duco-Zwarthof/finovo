@@ -48,12 +48,14 @@ Implemented functionality:
 - Validated browser-local persistence for transactions, widget visibility and responsive layouts, including a V1 transaction envelope
 - Visibly labelled, display-only demo transactions when no saved transaction value exists
 - Deterministic separation between demo transactions and browser-local user transactions, including intentional empty datasets
+- Cent-accurate domain transaction amounts using canonical whole-euro-cent values while retaining temporary euro-amount compatibility
 
 Current limitations:
 
 - Saved data is available only in the current browser profile on the current device; account and cloud synchronization are not implemented.
 - Net worth and savings-goal values remain labelled examples because account and goal data sources are not implemented.
 - Legacy transaction arrays remain readable without an initialization write and migrate to V1 on the next successful user transaction mutation. Valid empty legacy arrays remain intentional empty user data; malformed and unsupported payloads remain untouched.
+- Persisted transaction V1 remains amount-only; persistence migration to a cent-based schema is not implemented yet.
 
 Planned functionality:
 

@@ -46,6 +46,8 @@ function isExactSampleTransaction(
       sampleTransaction.id === transaction.id &&
       sampleTransaction.title === transaction.title &&
       sampleTransaction.amount === transaction.amount &&
+      sampleTransaction.amountMinor ===
+        transaction.amountMinor &&
       sampleTransaction.type === transaction.type &&
       sampleTransaction.category === transaction.category &&
       sampleTransaction.date === transaction.date

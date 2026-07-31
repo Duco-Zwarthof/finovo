@@ -24,6 +24,7 @@ export type Transaction = {
   id: string;
   title: string;
   amount: number;
+  amountMinor: number;
   type: TransactionType;
   category: TransactionCategory;
   date: string;

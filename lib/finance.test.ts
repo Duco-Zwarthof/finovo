@@ -6,13 +6,18 @@ import { calculateMonthlyFinancialSummary } from "./finance";
 function createTransaction({
   id,
   amount,
+  amountMinor,
   type,
   date,
-}: Pick<Transaction, "id" | "amount" | "type" | "date">): Transaction {
+}: Pick<
+  Transaction,
+  "id" | "amount" | "amountMinor" | "type" | "date"
+>): Transaction {
   return {
     id,
     title: id,
     amount,
+    amountMinor,
     type,
     category: type === "income" ? "Salary" : "Groceries",
     date,
@@ -27,12 +32,14 @@ describe("calculateMonthlyFinancialSummary", () => {
       createTransaction({
         id: "income",
         amount: 1_000,
+        amountMinor: 100_000,
         type: "income",
         date: "2026-07-01",
       }),
       createTransaction({
         id: "expense",
         amount: 250,
+        amountMinor: 25_000,
         type: "expense",
         date: "2026-07-31",
       }),
@@ -56,30 +63,35 @@ describe("calculateMonthlyFinancialSummary", () => {
       createTransaction({
         id: "june-income",
         amount: 3_000,
+        amountMinor: 300_000,
         type: "income",
         date: "2026-06-30",
       }),
       createTransaction({
         id: "july-income",
         amount: 2_000,
+        amountMinor: 200_000,
         type: "income",
         date: "2026-07-10",
       }),
       createTransaction({
         id: "july-expense",
         amount: 500,
+        amountMinor: 50_000,
         type: "expense",
         date: "2026-07-20",
       }),
       createTransaction({
         id: "august-expense",
         amount: 700,
+        amountMinor: 70_000,
         type: "expense",
         date: "2026-08-01",
       }),
       createTransaction({
         id: "invalid-expense",
         amount: 900,
+        amountMinor: 90_000,
         type: "expense",
         date: "2026-07-32",
       }),
@@ -104,6 +116,7 @@ describe("calculateMonthlyFinancialSummary", () => {
         createTransaction({
           id: "expense",
           amount: 100,
+          amountMinor: 10_000,
           type: "expense",
           date: "2026-07-15",
         }),
@@ -124,12 +137,14 @@ describe("calculateMonthlyFinancialSummary", () => {
       createTransaction({
         id: "income",
         amount: 200,
+        amountMinor: 20_000,
         type: "income",
         date: "2026-07-15",
       }),
       createTransaction({
         id: "expense",
         amount: 300,
+        amountMinor: 30_000,
         type: "expense",
         date: "2026-07-16",
       }),
@@ -154,12 +169,14 @@ describe("calculateMonthlyFinancialSummary", () => {
         createTransaction({
           id: "income",
           amount: 1_000,
+          amountMinor: 100_000,
           type: "income",
           date: "2026-07-15",
         }),
         createTransaction({
           id: "expense",
           amount: 1_004,
+          amountMinor: 100_400,
           type: "expense",
           date: "2026-07-16",
         }),

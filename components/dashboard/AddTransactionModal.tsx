@@ -10,6 +10,7 @@ import type {
 } from "@/lib/types";
 import { formatLocalDate, parseLocalDate } from "@/lib/date";
 import { CURRENCY_SYMBOL } from "@/lib/money";
+import { euroAmountToMinor } from "@/lib/transaction-amount";
 
 type AddTransactionModalProps = {
   onClose: () => void;
@@ -90,10 +91,11 @@ export default function AddTransactionModal({
     event.preventDefault();
 
     const numericAmount = Number(amount);
+    const amountMinor = euroAmountToMinor(amount);
 
     if (
       !title.trim() ||
-      numericAmount <= 0 ||
+      amountMinor === null ||
       !parseLocalDate(date)
     ) {
       return;
@@ -103,6 +105,7 @@ export default function AddTransactionModal({
       id: transaction?.id ?? crypto.randomUUID(),
       title: title.trim(),
       amount: numericAmount,
+      amountMinor,
       type,
       category,
       date,

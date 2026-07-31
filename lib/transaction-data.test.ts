@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { sampleTransactions } from "./sample-transactions";
-import { TRANSACTION_STORAGE_VERSION } from "./persisted-transactions";
+import {
+  TRANSACTION_STORAGE_VERSION,
+  createPersistedTransactionDataV1,
+} from "./persisted-transactions";
 import {
   STORAGE_KEYS,
   readStoredTransactions,
@@ -24,6 +27,7 @@ const userTransaction: Transaction = {
   id: "user-transaction-1",
   title: "Consulting income",
   amount: 450,
+  amountMinor: 45_000,
   type: "income",
   category: "Other",
   date: "2026-07-29",
@@ -225,6 +229,7 @@ describe("demo-to-user transaction transitions", () => {
       id: "user-transaction-2",
       title: "Groceries",
       amount: 85,
+      amountMinor: 8_500,
       type: "expense",
       category: "Groceries",
     };
@@ -235,6 +240,7 @@ describe("demo-to-user transaction transitions", () => {
     const updatedTransaction = {
       ...secondTransaction,
       amount: 90,
+      amountMinor: 9_000,
     };
     const updatedState = updateTransactionInData(
       addedState,
@@ -337,10 +343,9 @@ describe("transaction data persistence boundary", () => {
       )
     ).toEqual({ status: "written" });
     expect(values.get(STORAGE_KEYS.transactions)).toBe(
-      JSON.stringify({
-        version: TRANSACTION_STORAGE_VERSION,
-        transactions: [userTransaction],
-      })
+      JSON.stringify(
+        createPersistedTransactionDataV1([userTransaction])
+      )
     );
 
     const reloadedState = createTransactionDataState(
@@ -394,6 +399,7 @@ describe("transaction data persistence boundary", () => {
       updateTransactionInData(state, {
         ...userTransaction,
         amount: 500,
+        amountMinor: 50_000,
       })],
     ["delete", (state: ReturnType<typeof createTransactionDataState>) =>
       deleteTransactionFromData(state, userTransaction.id)],
@@ -418,10 +424,11 @@ describe("transaction data persistence boundary", () => {
       ).toEqual({ status: "written" });
       expect(
         JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
-      ).toEqual({
-        version: TRANSACTION_STORAGE_VERSION,
-        transactions: nextState.transactions,
-      });
+      ).toEqual(
+        createPersistedTransactionDataV1(
+          nextState.transactions
+        )
+      );
     }
   );
 
@@ -444,10 +451,11 @@ describe("transaction data persistence boundary", () => {
 
     expect(
       JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
-    ).toEqual({
-      version: TRANSACTION_STORAGE_VERSION,
-      transactions: nextState.transactions,
-    });
+    ).toEqual(
+      createPersistedTransactionDataV1(
+        nextState.transactions
+      )
+    );
     expect(nextState.transactions).not.toContainEqual(
       sampleTransactions[0]
     );
@@ -494,7 +502,10 @@ describe("transaction data persistence boundary", () => {
       "unsupported-version",
       JSON.stringify({
         version: TRANSACTION_STORAGE_VERSION + 1,
-        transactions: [userTransaction],
+        transactions:
+          createPersistedTransactionDataV1([
+            userTransaction,
+          ]).transactions,
       }),
     ],
   ])(
@@ -522,10 +533,9 @@ describe("transaction data persistence boundary", () => {
   );
 
   it("keeps already-V1 data in V1 through the normal mutation path", () => {
-    const rawValue = JSON.stringify({
-      version: TRANSACTION_STORAGE_VERSION,
-      transactions: [userTransaction],
-    });
+    const rawValue = JSON.stringify(
+      createPersistedTransactionDataV1([userTransaction])
+    );
     const { storage, values } = createFakeStorage({
       [STORAGE_KEYS.transactions]: rawValue,
     });
@@ -541,10 +551,11 @@ describe("transaction data persistence boundary", () => {
 
     expect(
       JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
-    ).toEqual({
-      version: TRANSACTION_STORAGE_VERSION,
-      transactions: nextState.transactions,
-    });
+    ).toEqual(
+      createPersistedTransactionDataV1(
+        nextState.transactions
+      )
+    );
   });
 });
 

@@ -5,6 +5,7 @@ import type {
 } from "react-grid-layout";
 
 import { parseLocalDate } from "./date";
+import { euroAmountToMinor } from "./transaction-amount";
 import {
   TRANSACTION_STORAGE_VERSION,
   createPersistedTransactionDataV1,
@@ -157,6 +158,10 @@ function parseTransaction(
 
   const { id, title, amount, type, category, date } =
     value;
+  const amountMinor =
+    typeof amount === "number"
+      ? euroAmountToMinor(amount)
+      : null;
 
   if (
     typeof id !== "string" ||
@@ -164,8 +169,7 @@ function parseTransaction(
     typeof title !== "string" ||
     title.trim().length === 0 ||
     typeof amount !== "number" ||
-    !Number.isFinite(amount) ||
-    amount <= 0 ||
+    amountMinor === null ||
     !isTransactionType(type) ||
     !isTransactionCategory(category) ||
     typeof date !== "string" ||
@@ -178,6 +182,7 @@ function parseTransaction(
     id,
     title,
     amount,
+    amountMinor,
     type,
     category,
     date,

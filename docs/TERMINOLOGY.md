@@ -35,6 +35,14 @@ Monthly surplus divided by monthly income, expressed as a percentage. The surplu
 
 ---
 
+# Transaction Amounts
+
+## Transaction amount minor units
+
+`amountMinor` is the canonical domain transaction amount measured in whole euro cents. For example, €12.34 is `1234`. It is always a non-negative safe integer; transaction direction is represented separately by income or expense type.
+
+The euro `amount` field remains temporarily available for backward compatibility, and persisted transaction V1 remains amount-only until a later versioned storage migration.
+
 # Data Sources
 
 ## Demo data
