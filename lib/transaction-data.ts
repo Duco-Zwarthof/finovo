@@ -1,6 +1,7 @@
 import { sampleTransactions } from "./sample-transactions";
 import type {
   StorageReadResult,
+  StorageReadStatus,
   WidgetId,
 } from "./storage";
 import type { Transaction } from "./types";
@@ -22,6 +23,15 @@ export type DashboardWidgetDataSource =
   | "demo"
   | "user"
   | "sample";
+
+export function canPersistTransactionMutation(
+  initialStorageStatus: StorageReadStatus
+): boolean {
+  return (
+    initialStorageStatus !== "invalid" &&
+    initialStorageStatus !== "unavailable"
+  );
+}
 
 const staticSampleWidgetIds: readonly WidgetId[] = [
   "netWorth",

@@ -11,6 +11,7 @@ import {
 } from "./storage";
 import {
   addTransactionToData,
+  canPersistTransactionMutation,
   createTransactionDataState,
   deleteTransactionFromData,
   getDashboardWidgetDataSource,
@@ -283,6 +284,16 @@ describe("demo-to-user transaction transitions", () => {
 });
 
 describe("transaction data persistence boundary", () => {
+  function persistMutation(
+    initialRead: StorageReadResult<Transaction[]>,
+    transactions: readonly Transaction[],
+    storage: StorageLike
+  ) {
+    return canPersistTransactionMutation(initialRead.status)
+      ? writeStoredTransactions(transactions, storage)
+      : null;
+  }
+
   it("does not persist demo data during an initial missing read", () => {
     const { storage, values } = createFakeStorage();
     const state = createTransactionDataState(
@@ -371,6 +382,169 @@ describe("transaction data persistence boundary", () => {
       readStoredTransactions([], storage)
     );
     expect(reloadedState.source).toBe("demo");
+  });
+
+  it.each([
+    ["add", (state: ReturnType<typeof createTransactionDataState>) =>
+      addTransactionToData(state, {
+        ...userTransaction,
+        id: "added-transaction",
+      })],
+    ["edit", (state: ReturnType<typeof createTransactionDataState>) =>
+      updateTransactionInData(state, {
+        ...userTransaction,
+        amount: 500,
+      })],
+    ["delete", (state: ReturnType<typeof createTransactionDataState>) =>
+      deleteTransactionFromData(state, userTransaction.id)],
+  ] as const)(
+    "writes V1 after the first successful legacy %s mutation",
+    (_operation, mutate) => {
+      const rawValue = JSON.stringify([userTransaction]);
+      const { storage, values } = createFakeStorage({
+        [STORAGE_KEYS.transactions]: rawValue,
+      });
+      const initialRead = readStoredTransactions([], storage);
+      const state = createTransactionDataState(initialRead);
+      const nextState = mutate(state);
+
+      expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+      expect(
+        persistMutation(
+          initialRead,
+          nextState.transactions,
+          storage
+        )
+      ).toEqual({ status: "written" });
+      expect(
+        JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
+      ).toEqual({
+        version: TRANSACTION_STORAGE_VERSION,
+        transactions: nextState.transactions,
+      });
+    }
+  );
+
+  it("migrates only user-owned records from mixed legacy data", () => {
+    const rawValue = JSON.stringify([
+      sampleTransactions[0],
+      userTransaction,
+    ]);
+    const { storage, values } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: rawValue,
+    });
+    const initialRead = readStoredTransactions([], storage);
+    const state = createTransactionDataState(initialRead);
+    const nextState = addTransactionToData(state, {
+      ...userTransaction,
+      id: "new-user-transaction",
+    });
+
+    persistMutation(initialRead, nextState.transactions, storage);
+
+    expect(
+      JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
+    ).toEqual({
+      version: TRANSACTION_STORAGE_VERSION,
+      transactions: nextState.transactions,
+    });
+    expect(nextState.transactions).not.toContainEqual(
+      sampleTransactions[0]
+    );
+  });
+
+  it("does not persist exact demo-only legacy data during initialization", () => {
+    const rawValue = JSON.stringify(sampleTransactions);
+    const { storage, values } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: rawValue,
+    });
+    const state = createTransactionDataState(
+      readStoredTransactions([], storage)
+    );
+
+    expect(state.source).toBe("demo");
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+  });
+
+  it("leaves the original legacy payload unchanged when its first mutation write fails", () => {
+    const rawValue = JSON.stringify([userTransaction]);
+    const { storage, values } = createFakeStorage(
+      { [STORAGE_KEYS.transactions]: rawValue },
+      { setThrows: true }
+    );
+    const initialRead = readStoredTransactions([], storage);
+    const nextState = addTransactionToData(
+      createTransactionDataState(initialRead),
+      { ...userTransaction, id: "new-user-transaction" }
+    );
+
+    expect(
+      persistMutation(
+        initialRead,
+        nextState.transactions,
+        storage
+      )
+    ).toEqual({ status: "failed" });
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+  });
+
+  it.each([
+    ["malformed", "{broken-json"],
+    [
+      "unsupported-version",
+      JSON.stringify({
+        version: TRANSACTION_STORAGE_VERSION + 1,
+        transactions: [userTransaction],
+      }),
+    ],
+  ])(
+    "does not overwrite a %s payload after a user mutation",
+    (_kind, rawValue) => {
+      const { storage, values } = createFakeStorage({
+        [STORAGE_KEYS.transactions]: rawValue,
+      });
+      const initialRead = readStoredTransactions([], storage);
+      const nextState = addTransactionToData(
+        createTransactionDataState(initialRead),
+        userTransaction
+      );
+
+      expect(initialRead.status).toBe("invalid");
+      expect(
+        persistMutation(
+          initialRead,
+          nextState.transactions,
+          storage
+        )
+      ).toBeNull();
+      expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+    }
+  );
+
+  it("keeps already-V1 data in V1 through the normal mutation path", () => {
+    const rawValue = JSON.stringify({
+      version: TRANSACTION_STORAGE_VERSION,
+      transactions: [userTransaction],
+    });
+    const { storage, values } = createFakeStorage({
+      [STORAGE_KEYS.transactions]: rawValue,
+    });
+    const initialRead = readStoredTransactions([], storage);
+
+    expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+
+    const nextState = addTransactionToData(
+      createTransactionDataState(initialRead),
+      { ...userTransaction, id: "second-user-transaction" }
+    );
+    persistMutation(initialRead, nextState.transactions, storage);
+
+    expect(
+      JSON.parse(values.get(STORAGE_KEYS.transactions) ?? "")
+    ).toEqual({
+      version: TRANSACTION_STORAGE_VERSION,
+      transactions: nextState.transactions,
+    });
   });
 });
 

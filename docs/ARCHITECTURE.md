@@ -291,7 +291,7 @@ New transaction writes use the V1 envelope:
 }
 ```
 
-The storage key and transaction values remain unchanged. Existing unversioned transaction arrays remain readable and are not rewritten during initialization. Automatic legacy migration is intentionally deferred; the next explicit transaction change is written in the current V1 format through the normal storage boundary.
+The storage key and transaction values remain unchanged. Existing unversioned transaction arrays remain readable and are not rewritten during initialization. Their validated, user-owned transactions migrate through the normal storage boundary only when the next explicit add, edit or delete is successfully written in the current V1 format. A valid empty legacy array remains intentional empty user data.
 
 Stored JSON is treated as untrusted input:
 
@@ -302,7 +302,7 @@ Stored JSON is treated as untrusted input:
 - Responsive layouts accept only known widget IDs and valid grid positions and dimensions. Missing or invalid widget layouts use their breakpoint defaults.
 - Layout updates merge with the complete saved layout so hiding a widget does not erase its stored position or size.
 
-Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, missing, invalid and partially recovered payloads remain untouched until the user explicitly changes that state slice. The next successful user change writes the current validated state; transaction writes use the V1 envelope, while dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, and the UI warns that changes may not survive a reload.
+Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, missing, invalid and partially recovered payloads remain untouched. The next successful user change writes valid or partially recovered transaction data using the V1 envelope; malformed and unsupported transaction payloads remain untouched even after an in-memory transaction change. Dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, leave the prior stored payload unchanged and cause the UI to warn that changes may not survive a reload.
 
 Persisted state is initialized lazily in the client component without an initial persistence write. Browser globals are guarded during server rendering, and the responsive dashboard content waits for its client-side container measurement so server fallback state cannot cause a hydration mismatch.
 

@@ -10,6 +10,7 @@
 - Added an explicit demo/user transaction-state boundary with focused transition and persistence tests.
 - Added visible demo-data disclosure and always-visible sample labels for the net-worth and savings-goal widgets.
 - Added a V1 transaction persistence envelope and a separate persisted transaction model.
+- Added focused coverage for legacy transaction migration through add, edit and delete operations, including demo-data and failure boundaries.
 
 ### Changed
 
@@ -19,6 +20,7 @@
 - Deferred persistence until explicit user changes and added a visible warning for storage recovery or write failures.
 - Made sample transactions display-only; the first explicit transaction change now switches to user data without merging in examples.
 - Changed new transaction writes to use the versioned envelope while keeping legacy arrays readable and untouched during initialization.
+- Formalized legacy transaction migration on the next successful user mutation while preserving valid empty data and leaving malformed or unsupported payloads untouched.
 
 ### Fixed
 

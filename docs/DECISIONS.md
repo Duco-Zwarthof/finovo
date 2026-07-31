@@ -227,9 +227,9 @@ New transaction writes use a V1 persistence envelope under the existing `finovo-
 
 The persisted envelope is defined separately from the domain transaction model. The storage boundary validates the envelope version and its transaction entries, then continues to return domain `Transaction[]` values to the application.
 
-Existing unversioned transaction arrays remain readable and are not rewritten during initialization. This decision does not introduce automatic legacy migration. The next explicit transaction change uses the current V1 write format through the normal persistence path.
+Existing unversioned transaction arrays remain readable and are not rewritten during initialization. A valid empty legacy array remains intentional empty user data. On the next successful explicit add, edit or delete, the normal persistence path writes the resulting user-owned transactions in the current V1 format. Exact demo seeds are excluded by the existing demo-data boundary and are never migrated or persisted.
 
-The transaction fields, values, amount representation, storage key, demo behavior and application-facing storage API remain unchanged. Unsupported versions are treated as invalid stored data and follow the existing safe fallback and warning behavior.
+The transaction fields, values, amount representation, storage key, demo behavior and application-facing storage API remain unchanged. Malformed payloads and unsupported versions are treated as invalid stored data, follow the existing safe fallback and warning behavior, and remain untouched by later in-memory transaction changes. A failed migration write leaves the prior stored legacy payload unchanged.
 
 ## Reason
 

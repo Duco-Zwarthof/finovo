@@ -53,7 +53,7 @@ Current limitations:
 
 - Saved data is available only in the current browser profile on the current device; account and cloud synchronization are not implemented.
 - Net worth and savings-goal values remain labelled examples because account and goal data sources are not implemented.
-- Legacy transaction arrays remain readable but are not automatically migrated during initialization.
+- Legacy transaction arrays remain readable without an initialization write and migrate to V1 on the next successful user transaction mutation. Valid empty legacy arrays remain intentional empty user data; malformed and unsupported payloads remain untouched.
 
 Planned functionality:
 

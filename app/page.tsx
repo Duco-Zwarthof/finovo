@@ -56,6 +56,7 @@ import {
 } from "@/lib/storage";
 import {
   addTransactionToData,
+  canPersistTransactionMutation,
   createTransactionDataState,
   deleteTransactionFromData,
   getDashboardWidgetDataSource,
@@ -637,12 +638,7 @@ export default function Home() {
       );
 
     setTransactionData(nextTransactionData);
-    recordStorageResult(
-      "transactions",
-      writeStoredTransactions(
-        nextTransactionData.transactions
-      )
-    );
+    persistTransactionMutation(nextTransactionData);
   }
 
   function handleEditTransaction(
@@ -669,12 +665,7 @@ export default function Home() {
       );
 
     setTransactionData(nextTransactionData);
-    recordStorageResult(
-      "transactions",
-      writeStoredTransactions(
-        nextTransactionData.transactions
-      )
-    );
+    persistTransactionMutation(nextTransactionData);
 
     setEditingTransaction(null);
   }
@@ -687,6 +678,23 @@ export default function Home() {
       );
 
     setTransactionData(nextTransactionData);
+    persistTransactionMutation(nextTransactionData);
+  }
+
+  function persistTransactionMutation(
+    nextTransactionData: Extract<
+      typeof transactionData,
+      { source: "user" }
+    >
+  ) {
+    if (
+      !canPersistTransactionMutation(
+        initialTransactions.status
+      )
+    ) {
+      return;
+    }
+
     recordStorageResult(
       "transactions",
       writeStoredTransactions(
