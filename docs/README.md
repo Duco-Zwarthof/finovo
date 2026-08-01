@@ -15,14 +15,15 @@ Every contributor and AI agent should read these documents before making signifi
 3. PROJECT_RULES.md
 4. TERMINOLOGY.md
 5. ARCHITECTURE.md
-6. AGENTS.md
-7. FEATURES.md
-8. ROADMAP.md
-9. DECISIONS.md
-10. DOCUMENTATION_RULES.md
-11. CHANGELOG.md
-12. BACKLOG.md
-13. TODO.md
+6. BUDGET_ARCHITECTURE.md
+7. AGENTS.md
+8. FEATURES.md
+9. ROADMAP.md
+10. DECISIONS.md
+11. DOCUMENTATION_RULES.md
+12. CHANGELOG.md
+13. BACKLOG.md
+14. TODO.md
 
 ---
 
