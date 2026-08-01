@@ -7,33 +7,51 @@ import {
 } from "react";
 
 import BudgetCategoryList from "@/components/budget/BudgetCategoryList";
+import BudgetFormModal from "@/components/budget/BudgetFormModal";
 import BudgetHeader from "@/components/budget/BudgetHeader";
 import BudgetSummary from "@/components/budget/BudgetSummary";
 import Sidebar from "@/components/layout/Sidebar";
 
 import {
+  addBudget,
   calculateBudgetProgress,
   calculateMonthlyBudgetSummary,
+  deleteBudget,
+  updateBudget,
 } from "@/lib/budget";
 import { formatBudgetMonth } from "@/lib/budget-month";
-import { readStoredBudgets } from "@/lib/budget-storage";
+import {
+  readStoredBudgets,
+  writeStoredBudgets,
+  type BudgetStorageReadStatus,
+} from "@/lib/budget-storage";
 import type {
   Budget,
   BudgetMonth,
   BudgetProgress,
 } from "@/lib/budget-types";
-import { readStoredTransactions } from "@/lib/storage";
+import {
+  readStoredTransactions,
+  type StorageWriteResult,
+} from "@/lib/storage";
 import {
   createTransactionDataState,
   getDisplayedTransactions,
 } from "@/lib/transaction-data";
 
+type BudgetStorageHealth =
+  | BudgetStorageReadStatus
+  | "write-failed";
+
 function getBudgetStorageNotice(
-  status: ReturnType<typeof readStoredBudgets>["status"]
+  status: BudgetStorageHealth
 ) {
   switch (status) {
     case "unavailable":
-      return "Budget storage is unavailable. Saved budgets may not be available in this browser.";
+      return "Budget storage is unavailable. Changes may be lost when you reload this page.";
+
+    case "write-failed":
+      return "Your budget changes are visible for this session, but they could not be saved in this browser.";
 
     case "unsupported":
       return "Your saved budget data uses an unsupported version and has not been changed.";
@@ -50,7 +68,9 @@ function getBudgetStorageNotice(
 }
 
 function getTransactionStorageNotice(
-  status: ReturnType<typeof readStoredTransactions>["status"]
+  status: ReturnType<
+    typeof readStoredTransactions
+  >["status"]
 ) {
   switch (status) {
     case "unavailable":
@@ -64,6 +84,31 @@ function getTransactionStorageNotice(
 
     default:
       return null;
+  }
+}
+
+function canPersistBudgetMutation(
+  status: BudgetStorageReadStatus
+) {
+  return (
+    status !== "invalid" &&
+    status !== "unsupported" &&
+    status !== "unavailable"
+  );
+}
+
+function getBudgetWriteHealth(
+  result: StorageWriteResult
+): BudgetStorageHealth {
+  switch (result.status) {
+    case "written":
+      return "valid";
+
+    case "unavailable":
+      return "unavailable";
+
+    default:
+      return "write-failed";
   }
 }
 
@@ -92,12 +137,14 @@ function BudgetPageSkeleton() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-32 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
-            />
-          ))}
+          {Array.from({ length: 4 }).map(
+            (_, index) => (
+              <div
+                key={index}
+                className="h-32 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
+              />
+            )
+          )}
         </div>
       </section>
 
@@ -120,16 +167,23 @@ export default function BudgetPage() {
     readStoredBudgets([])
   );
 
-  const [budgets] = useState<Budget[]>(
+  const [budgets, setBudgets] = useState<Budget[]>(
     initialBudgetResult.value
   );
+
+  const [budgetStorageHealth, setBudgetStorageHealth] =
+    useState<BudgetStorageHealth>(
+      initialBudgetResult.status
+    );
 
   const [initialTransactionResult] = useState(() =>
     readStoredTransactions([])
   );
 
   const [transactionData] = useState(() =>
-    createTransactionDataState(initialTransactionResult)
+    createTransactionDataState(
+      initialTransactionResult
+    )
   );
 
   const [selectedMonth, setSelectedMonth] =
@@ -137,13 +191,20 @@ export default function BudgetPage() {
       formatBudgetMonth(new Date())
     );
 
+  const [isBudgetFormOpen, setIsBudgetFormOpen] =
+    useState(false);
+
+  const [editingBudget, setEditingBudget] =
+    useState<Budget | null>(null);
+
   const transactions =
     getDisplayedTransactions(transactionData);
 
   const monthlyBudgets = useMemo(
     () =>
       budgets.filter(
-        (budget) => budget.month === selectedMonth
+        (budget) =>
+          budget.month === selectedMonth
       ),
     [budgets, selectedMonth]
   );
@@ -170,15 +231,89 @@ export default function BudgetPage() {
   );
 
   const budgetStorageNotice =
-    getBudgetStorageNotice(initialBudgetResult.status);
+    getBudgetStorageNotice(
+      budgetStorageHealth
+    );
 
   const transactionStorageNotice =
     getTransactionStorageNotice(
       initialTransactionResult.status
     );
 
-  function handleAddBudget() {
-    // Budget CRUD wordt in de volgende stap toegevoegd.
+  function openAddBudgetForm() {
+    setEditingBudget(null);
+    setIsBudgetFormOpen(true);
+  }
+
+  function openEditBudgetForm(
+    budgetId: string
+  ) {
+    const budget = budgets.find(
+      (candidate) =>
+        candidate.id === budgetId
+    );
+
+    if (!budget) {
+      return;
+    }
+
+    setEditingBudget(budget);
+    setIsBudgetFormOpen(true);
+  }
+
+  function closeBudgetForm() {
+    setEditingBudget(null);
+    setIsBudgetFormOpen(false);
+  }
+
+  function persistBudgets(
+    nextBudgets: Budget[]
+  ) {
+    if (
+      !canPersistBudgetMutation(
+        initialBudgetResult.status
+      )
+    ) {
+      return;
+    }
+
+    const result =
+      writeStoredBudgets(nextBudgets);
+
+    setBudgetStorageHealth(
+      getBudgetWriteHealth(result)
+    );
+  }
+
+  function handleSaveBudget(
+    budget: Budget
+  ) {
+    let nextBudgets: Budget[];
+
+    try {
+      nextBudgets = editingBudget
+        ? updateBudget(budgets, budget)
+        : addBudget(budgets, budget);
+    } catch {
+      return;
+    }
+
+    setBudgets(nextBudgets);
+    persistBudgets(nextBudgets);
+    closeBudgetForm();
+  }
+
+  function handleDeleteBudget(
+    budgetId: string
+  ) {
+    const nextBudgets = deleteBudget(
+      budgets,
+      budgetId
+    );
+
+    setBudgets(nextBudgets);
+    persistBudgets(nextBudgets);
+    closeBudgetForm();
   }
 
   return (
@@ -189,29 +324,34 @@ export default function BudgetPage() {
         <BudgetHeader
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
-          onAddBudget={handleAddBudget}
+          onAddBudget={openAddBudgetForm}
         />
 
         {!hasHydrated ? (
           <BudgetPageSkeleton />
         ) : (
           <>
-            {transactionData.source === "demo" && (
+            {transactionData.source ===
+              "demo" && (
               <aside className="mt-8 rounded-2xl border border-blue-500/25 bg-blue-500/[0.08] px-4 py-3">
                 <p className="text-sm font-semibold text-blue-200">
                   Demo transactions
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-blue-100/80">
-                  Spending comparisons currently use example
-                  transactions. No sample budgets are created or
+                  Spending comparisons currently
+                  use example transactions. No
+                  sample budgets are created or
                   saved.
                 </p>
               </aside>
             )}
 
             {budgetStorageNotice && (
-              <aside className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+              <aside
+                role="status"
+                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+              >
                 <p className="text-sm font-semibold text-amber-200">
                   Budget storage notice
                 </p>
@@ -223,7 +363,10 @@ export default function BudgetPage() {
             )}
 
             {transactionStorageNotice && (
-              <aside className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+              <aside
+                role="status"
+                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+              >
                 <p className="text-sm font-semibold text-amber-200">
                   Transaction storage notice
                 </p>
@@ -235,7 +378,9 @@ export default function BudgetPage() {
             )}
 
             <div className="mt-8">
-              <BudgetSummary summary={summary} />
+              <BudgetSummary
+                summary={summary}
+              />
             </div>
 
             <section
@@ -251,19 +396,41 @@ export default function BudgetPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-zinc-500">
-                  Monitor each spending category against its monthly
-                  limit.
+                  Monitor each spending category
+                  against its monthly limit.
                 </p>
               </div>
 
               <BudgetCategoryList
                 progress={progress}
-                hasTransactions={transactions.length > 0}
+                hasTransactions={
+                  transactions.length > 0
+                }
+                onEditBudget={
+                  openEditBudgetForm
+                }
               />
             </section>
           </>
         )}
       </section>
+
+      {isBudgetFormOpen && (
+        <BudgetFormModal
+          budgets={budgets}
+          selectedMonth={selectedMonth}
+          budget={
+            editingBudget ?? undefined
+          }
+          onClose={closeBudgetForm}
+          onSave={handleSaveBudget}
+          onDelete={
+            editingBudget
+              ? handleDeleteBudget
+              : undefined
+          }
+        />
+      )}
     </main>
   );
 }
