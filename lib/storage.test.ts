@@ -26,18 +26,20 @@ import {
 const validTransaction: Transaction = {
   id: "salary-1",
   title: "Salary",
-  amount: 3_250.5,
   amountMinor: 325_050,
   type: "income",
   category: "Salary",
   date: "2026-07-31",
 };
 
+const validPersistedTransactionV1 =
+  createPersistedTransactionDataV1([validTransaction])
+    .transactions[0];
+
 const fallbackTransactions: Transaction[] = [
   {
     id: "fallback-1",
     title: "Fallback transaction",
-    amount: 10,
     amountMinor: 1_000,
     type: "expense",
     category: "Other",
@@ -137,9 +139,9 @@ function createFakeStorage(
 }
 
 describe("stored transaction validation", () => {
-  it("accepts valid transactions without changing their values", () => {
+  it("accepts valid transactions without changing their economic values", () => {
     expect(
-      validateStoredTransactions([validTransaction])
+      validateStoredTransactions([validPersistedTransactionV1])
     ).toEqual({
       value: [validTransaction],
       recovered: false,
@@ -156,13 +158,12 @@ describe("stored transaction validation", () => {
   it("derives a zero minor amount from a valid zero euro amount", () => {
     expect(
       validateStoredTransactions([
-        { ...validTransaction, amount: 0 },
+        { ...validPersistedTransactionV1, amount: 0 },
       ])
     ).toEqual({
       value: [
         {
           ...validTransaction,
-          amount: 0,
           amountMinor: 0,
         },
       ],
@@ -174,8 +175,12 @@ describe("stored transaction validation", () => {
     "rejects the unsupported transaction type %s",
     (type) => {
       const result = validateStoredTransactions([
-        validTransaction,
-        { ...validTransaction, id: "invalid", type },
+        validPersistedTransactionV1,
+        {
+          ...validPersistedTransactionV1,
+          id: "invalid",
+          type,
+        },
       ]);
 
       expect(result).toEqual({
@@ -189,8 +194,12 @@ describe("stored transaction validation", () => {
     "rejects the non-finite amount %s",
     (amount) => {
       const result = validateStoredTransactions([
-        validTransaction,
-        { ...validTransaction, id: "invalid", amount },
+        validPersistedTransactionV1,
+        {
+          ...validPersistedTransactionV1,
+          id: "invalid",
+          amount,
+        },
       ]);
 
       expect(result).toEqual({
@@ -202,14 +211,14 @@ describe("stored transaction validation", () => {
 
   it("rejects malformed and impossible local dates", () => {
     const result = validateStoredTransactions([
-      validTransaction,
+      validPersistedTransactionV1,
       {
-        ...validTransaction,
+        ...validPersistedTransactionV1,
         id: "invalid-format",
         date: "31-07-2026",
       },
       {
-        ...validTransaction,
+        ...validPersistedTransactionV1,
         id: "invalid-calendar-date",
         date: "2026-02-30",
       },
@@ -222,10 +231,10 @@ describe("stored transaction validation", () => {
   });
 
   it.each([
-    { ...validTransaction, title: " " },
-    { ...validTransaction, category: "Unknown" },
-    { ...validTransaction, amount: -0.01 },
-    { ...validTransaction, amount: -1 },
+    { ...validPersistedTransactionV1, title: " " },
+    { ...validPersistedTransactionV1, category: "Unknown" },
+    { ...validPersistedTransactionV1, amount: -0.01 },
+    { ...validPersistedTransactionV1, amount: -1 },
   ])("rejects transactions with invalid required fields", (entry) => {
     expect(validateStoredTransactions([entry])).toEqual({
       value: [],
@@ -238,17 +247,19 @@ describe("stored transaction validation", () => {
       ...validTransaction,
       id: "groceries-1",
       title: "Groceries",
-      amount: 82.4,
       amountMinor: 8_240,
       type: "expense",
       category: "Groceries",
     };
+    const secondPersistedTransactionV1 =
+      createPersistedTransactionDataV1([secondValidTransaction])
+        .transactions[0];
 
     const result = validateStoredTransactions([
-      validTransaction,
-      { ...validTransaction, id: "", amount: 25 },
-      secondValidTransaction,
-      { ...secondValidTransaction },
+      validPersistedTransactionV1,
+      { ...validPersistedTransactionV1, id: "", amount: 25 },
+      secondPersistedTransactionV1,
+      { ...secondPersistedTransactionV1 },
     ]);
 
     expect(result).toEqual({
@@ -371,7 +382,10 @@ describe("transaction storage reads", () => {
   });
 
   it("continues to read a legacy transaction array without rewriting it", () => {
-    const rawValue = JSON.stringify([validTransaction]);
+    const rawValue = JSON.stringify(
+      createPersistedTransactionDataV1([validTransaction])
+        .transactions
+    );
     const { storage, values } = createFakeStorage({
       [STORAGE_KEYS.transactions]: rawValue,
     });

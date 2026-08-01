@@ -27,7 +27,6 @@ import type { Transaction } from "./types";
 const userTransaction: Transaction = {
   id: "user-transaction-1",
   title: "Consulting income",
-  amount: 450,
   amountMinor: 45_000,
   type: "income",
   category: "Other",
@@ -229,7 +228,6 @@ describe("demo-to-user transaction transitions", () => {
       ...userTransaction,
       id: "user-transaction-2",
       title: "Groceries",
-      amount: 85,
       amountMinor: 8_500,
       type: "expense",
       category: "Groceries",
@@ -240,7 +238,6 @@ describe("demo-to-user transaction transitions", () => {
     );
     const updatedTransaction = {
       ...secondTransaction,
-      amount: 90,
       amountMinor: 9_000,
     };
     const updatedState = updateTransactionInData(
@@ -399,7 +396,6 @@ describe("transaction data persistence boundary", () => {
     ["edit", (state: ReturnType<typeof createTransactionDataState>) =>
       updateTransactionInData(state, {
         ...userTransaction,
-        amount: 500,
         amountMinor: 50_000,
       })],
     ["delete", (state: ReturnType<typeof createTransactionDataState>) =>
@@ -407,7 +403,10 @@ describe("transaction data persistence boundary", () => {
   ] as const)(
     "writes V2 after the first successful legacy %s mutation",
     (_operation, mutate) => {
-      const rawValue = JSON.stringify([userTransaction]);
+      const rawValue = JSON.stringify(
+        createPersistedTransactionDataV1([userTransaction])
+          .transactions
+      );
       const { storage, values } = createFakeStorage({
         [STORAGE_KEYS.transactions]: rawValue,
       });
@@ -434,10 +433,12 @@ describe("transaction data persistence boundary", () => {
   );
 
   it("migrates only user-owned records from mixed legacy data", () => {
-    const rawValue = JSON.stringify([
-      sampleTransactions[0],
-      userTransaction,
-    ]);
+    const rawValue = JSON.stringify(
+      createPersistedTransactionDataV1([
+        sampleTransactions[0],
+        userTransaction,
+      ]).transactions
+    );
     const { storage, values } = createFakeStorage({
       [STORAGE_KEYS.transactions]: rawValue,
     });
@@ -463,20 +464,34 @@ describe("transaction data persistence boundary", () => {
   });
 
   it("does not persist exact demo-only legacy data during initialization", () => {
-    const rawValue = JSON.stringify(sampleTransactions);
-    const { storage, values } = createFakeStorage({
-      [STORAGE_KEYS.transactions]: rawValue,
-    });
-    const state = createTransactionDataState(
-      readStoredTransactions([], storage)
-    );
+  const legacySampleTransactions =
+    createPersistedTransactionDataV1(
+      sampleTransactions
+    ).transactions;
 
-    expect(state.source).toBe("demo");
-    expect(values.get(STORAGE_KEYS.transactions)).toBe(rawValue);
+  const rawValue = JSON.stringify(
+    legacySampleTransactions
+  );
+
+  const { storage, values } = createFakeStorage({
+    [STORAGE_KEYS.transactions]: rawValue,
   });
 
+  const state = createTransactionDataState(
+    readStoredTransactions([], storage)
+  );
+
+  expect(state.source).toBe("demo");
+  expect(values.get(STORAGE_KEYS.transactions)).toBe(
+    rawValue
+  );
+});
+
   it("leaves the original legacy payload unchanged when its first mutation write fails", () => {
-    const rawValue = JSON.stringify([userTransaction]);
+    const rawValue = JSON.stringify(
+      createPersistedTransactionDataV1([userTransaction])
+        .transactions
+    );
     const { storage, values } = createFakeStorage(
       { [STORAGE_KEYS.transactions]: rawValue },
       { setThrows: true }

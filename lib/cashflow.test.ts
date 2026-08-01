@@ -7,7 +7,6 @@ const transactions: Transaction[] = [
   {
     id: "income",
     title: "Income",
-    amount: 999,
     amountMinor: 1,
     type: "income",
     category: "Salary",
@@ -16,7 +15,6 @@ const transactions: Transaction[] = [
   {
     id: "expense",
     title: "Expense",
-    amount: 999,
     amountMinor: 2,
     type: "expense",
     category: "Other",

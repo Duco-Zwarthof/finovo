@@ -1,3 +1,4 @@
+import { amountMinorToEuroAmount } from "./transaction-amount";
 import type {
   Transaction,
   TransactionCategory,
@@ -21,11 +22,13 @@ export type PersistedTransactionDataV1 = {
   transactions: PersistedTransactionV1[];
 };
 
-export type PersistedTransactionV2 = Omit<
-  PersistedTransactionV1,
-  "amount"
-> & {
+export type PersistedTransactionV2 = {
+  id: string;
+  title: string;
   amountMinor: number;
+  type: TransactionType;
+  category: TransactionCategory;
+  date: string;
 };
 
 export type PersistedTransactionDataV2 = {
@@ -33,19 +36,37 @@ export type PersistedTransactionDataV2 = {
   transactions: PersistedTransactionV2[];
 };
 
+/**
+ * Creates the legacy V1 persisted format.
+ *
+ * This helper exists only for backwards-compatibility tests and legacy
+ * storage behavior. Decimal euro values must not re-enter the domain model.
+ */
 export function createPersistedTransactionDataV1(
   transactions: readonly Transaction[]
 ): PersistedTransactionDataV1 {
   return {
     version: TRANSACTION_STORAGE_VERSION_V1,
-    transactions: transactions.map((transaction) => ({
-      id: transaction.id,
-      title: transaction.title,
-      amount: transaction.amount,
-      type: transaction.type,
-      category: transaction.category,
-      date: transaction.date,
-    })),
+    transactions: transactions.map((transaction) => {
+      const amount = amountMinorToEuroAmount(
+        transaction.amountMinor
+      );
+
+      if (amount === null) {
+        throw new RangeError(
+          `Transaction "${transaction.id}" has an invalid amountMinor value.`
+        );
+      }
+
+      return {
+        id: transaction.id,
+        title: transaction.title,
+        amount,
+        type: transaction.type,
+        category: transaction.category,
+        date: transaction.date,
+      };
+    }),
   };
 }
 

@@ -25,9 +25,9 @@ When in doubt:
 1. Read `VISION.md`
 2. Read `PRODUCT_PRINCIPLES.md`
 3. Read `PROJECT_RULES.md`
-4. Read this document
-
-Only then begin implementation.
+4. Read `ARCHITECTURE.md`
+5. Read `TERMINOLOGY.md`
+6. Read this document
 
 ---
 
@@ -224,6 +224,15 @@ Always:
 
 Quality is more important than speed.
 
+Before implementing a feature:
+
+- analyze the existing codebase
+- identify reusable components
+- identify reusable utilities
+- identify reusable hooks
+
+Never assume functionality does not already exist.
+
 ---
 
 # Architecture Principles
@@ -290,7 +299,7 @@ Avoid:
 
 # Documentation Rules
 
-Whenever architecture, product behaviour or important implementation changes:
+Whenever any meaningful implementation changes, determine which documentation should also be updated according to DOCUMENTATION_RULES.md.
 
 Determine whether the following should also be updated:
 
@@ -316,6 +325,7 @@ Verify:
 - Is the implementation responsive?
 - Is accessibility maintained?
 - Should documentation be updated?
+- Do naming and user-facing terminology follow TERMINOLOGY.md?
 
 ---
 

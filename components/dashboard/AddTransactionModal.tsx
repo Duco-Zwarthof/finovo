@@ -3,14 +3,17 @@
 import { FormEvent, useState } from "react";
 import { X } from "lucide-react";
 
+import { formatLocalDate, parseLocalDate } from "@/lib/date";
+import { CURRENCY_SYMBOL } from "@/lib/money";
+import {
+  amountMinorToEuroAmount,
+  euroAmountToMinor,
+} from "@/lib/transaction-amount";
 import type {
   Transaction,
   TransactionCategory,
   TransactionType,
 } from "@/lib/types";
-import { formatLocalDate, parseLocalDate } from "@/lib/date";
-import { CURRENCY_SYMBOL } from "@/lib/money";
-import { euroAmountToMinor } from "@/lib/transaction-amount";
 
 type AddTransactionModalProps = {
   onClose: () => void;
@@ -35,6 +38,20 @@ const expenseCategories: TransactionCategory[] = [
   "Other",
 ];
 
+function getInitialAmountValue(
+  transaction?: Transaction
+): string {
+  if (!transaction) {
+    return "";
+  }
+
+  const euroAmount = amountMinorToEuroAmount(
+    transaction.amountMinor
+  );
+
+  return euroAmount === null ? "" : String(euroAmount);
+}
+
 export default function AddTransactionModal({
   onClose,
   onSave,
@@ -52,7 +69,7 @@ export default function AddTransactionModal({
   );
 
   const [amount, setAmount] = useState(
-    transaction ? String(transaction.amount) : ""
+    getInitialAmountValue(transaction)
   );
 
   const [category, setCategory] =
@@ -61,8 +78,7 @@ export default function AddTransactionModal({
     );
 
   const [date, setDate] = useState(
-    transaction?.date ??
-      formatLocalDate(new Date())
+    transaction?.date ?? formatLocalDate(new Date())
   );
 
   const categories =
@@ -90,7 +106,6 @@ export default function AddTransactionModal({
   ) {
     event.preventDefault();
 
-    const numericAmount = Number(amount);
     const amountMinor = euroAmountToMinor(amount);
 
     if (
@@ -104,7 +119,6 @@ export default function AddTransactionModal({
     const savedTransaction: Transaction = {
       id: transaction?.id ?? crypto.randomUUID(),
       title: title.trim(),
-      amount: numericAmount,
       amountMinor,
       type,
       category,

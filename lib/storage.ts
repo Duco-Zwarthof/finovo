@@ -6,8 +6,8 @@ import type {
 
 import { parseLocalDate } from "./date";
 import {
-  amountMinorToEuroAmount,
   euroAmountToMinor,
+  isValidAmountMinor,
 } from "./transaction-amount";
 import {
   TRANSACTION_STORAGE_VERSION,
@@ -185,7 +185,6 @@ function parsePersistedTransactionV1(
   return {
     id,
     title,
-    amount,
     amountMinor,
     type,
     category,
@@ -208,18 +207,12 @@ function parsePersistedTransactionV2(
     category,
     date,
   } = value;
-  const amount =
-    typeof amountMinor === "number"
-      ? amountMinorToEuroAmount(amountMinor)
-      : null;
-
   if (
     typeof id !== "string" ||
     id.trim().length === 0 ||
     typeof title !== "string" ||
     title.trim().length === 0 ||
-    typeof amountMinor !== "number" ||
-    amount === null ||
+    !isValidAmountMinor(amountMinor) ||
     !isTransactionType(type) ||
     !isTransactionCategory(category) ||
     typeof date !== "string" ||
@@ -231,7 +224,6 @@ function parsePersistedTransactionV2(
   return {
     id,
     title,
-    amount,
     amountMinor,
     type,
     category,

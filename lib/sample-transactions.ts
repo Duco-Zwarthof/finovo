@@ -4,8 +4,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-1",
     title: "Monthly salary",
-    amount: 3150,
-    amountMinor: 315000,
+    amountMinor: 315_000,
     type: "income",
     category: "Salary",
     date: "2026-07-25",
@@ -13,8 +12,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-2",
     title: "Rent",
-    amount: 850,
-    amountMinor: 85000,
+    amountMinor: 85_000,
     type: "expense",
     category: "Housing",
     date: "2026-07-01",
@@ -22,8 +20,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-3",
     title: "Groceries",
-    amount: 342,
-    amountMinor: 34200,
+    amountMinor: 34_200,
     type: "expense",
     category: "Groceries",
     date: "2026-07-12",
@@ -31,8 +28,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-4",
     title: "Transport",
-    amount: 190,
-    amountMinor: 19000,
+    amountMinor: 19_000,
     type: "expense",
     category: "Transport",
     date: "2026-07-15",
@@ -40,8 +36,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-5",
     title: "Entertainment",
-    amount: 280,
-    amountMinor: 28000,
+    amountMinor: 28_000,
     type: "expense",
     category: "Entertainment",
     date: "2026-07-19",
@@ -49,8 +44,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-6",
     title: "Subscriptions",
-    amount: 120,
-    amountMinor: 12000,
+    amountMinor: 12_000,
     type: "expense",
     category: "Subscriptions",
     date: "2026-07-22",
@@ -58,8 +52,7 @@ export const sampleTransactions: Transaction[] = [
   {
     id: "transaction-7",
     title: "Other expenses",
-    amount: 200,
-    amountMinor: 20000,
+    amountMinor: 20_000,
     type: "expense",
     category: "Other",
     date: "2026-07-27",

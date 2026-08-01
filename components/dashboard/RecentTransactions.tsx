@@ -37,6 +37,10 @@ import {
   CURRENCY_SYMBOL,
   formatCurrency,
 } from "@/lib/money";
+import {
+  amountMinorToEuroAmount,
+  euroAmountToMinor,
+} from "@/lib/transaction-amount";
 
 type RecentTransactionsProps = {
   transactions: Transaction[];
@@ -242,15 +246,15 @@ export default function RecentTransactions({
     const normalizedSearch =
       searchQuery.trim().toLowerCase();
 
-    const parsedMinimum =
+    const parsedMinimumMinor =
       minimumAmount.trim() === ""
         ? null
-        : Number(minimumAmount);
+        : euroAmountToMinor(minimumAmount);
 
-    const parsedMaximum =
+    const parsedMaximumMinor =
       maximumAmount.trim() === ""
         ? null
-        : Number(maximumAmount);
+        : euroAmountToMinor(maximumAmount);
 
     const filtered = transactions.filter(
       (transaction) => {
@@ -289,14 +293,12 @@ export default function RecentTransactions({
           );
 
         const matchesMinimum =
-          parsedMinimum === null ||
-          Number.isNaN(parsedMinimum) ||
-          transaction.amount >= parsedMinimum;
+          parsedMinimumMinor === null ||
+          transaction.amountMinor >= parsedMinimumMinor;
 
         const matchesMaximum =
-          parsedMaximum === null ||
-          Number.isNaN(parsedMaximum) ||
-          transaction.amount <= parsedMaximum;
+          parsedMaximumMinor === null ||
+          transaction.amountMinor <= parsedMaximumMinor;
 
         return (
           matchesSearch &&
@@ -319,14 +321,14 @@ export default function RecentTransactions({
 
           case "highest":
             return (
-              secondTransaction.amount -
-              firstTransaction.amount
+              secondTransaction.amountMinor -
+              firstTransaction.amountMinor
             );
 
           case "lowest":
             return (
-              firstTransaction.amount -
-              secondTransaction.amount
+              firstTransaction.amountMinor -
+              secondTransaction.amountMinor
             );
 
           case "title-az":
@@ -1051,10 +1053,15 @@ export default function RecentTransactions({
                         }`}
                       >
                         {formatCurrency(
-                          transaction.type ===
-                          "income"
-                            ? transaction.amount
-                            : -transaction.amount,
+                          transaction.type === "income"
+                            ? (amountMinorToEuroAmount(
+                                transaction.amountMinor
+                              ) ?? 0)
+                            : -(
+                                amountMinorToEuroAmount(
+                                  transaction.amountMinor
+                                ) ?? 0
+                              ),
                           { showSign: true }
                         )}
                       </p>

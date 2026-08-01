@@ -121,7 +121,7 @@ Dashboard summaries labelled as monthly use the user's current local calendar mo
 Savings contributions, savings balances and savings goals remain separate concepts. The persisted dashboard widget key `monthlySavings` is retained temporarily for storage compatibility and is not product terminology.
 
 ## Reason
-
+s
 - Monthly summaries must have a precise and predictable reporting period.
 - Date-only transactions should not change day or month because of UTC conversion.
 - Surplus describes a period calculation without implying that the amount was transferred to savings.
