@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Responsive,
@@ -27,6 +28,7 @@ import "react-resizable/css/styles.css";
 import type { Transaction } from "@/lib/types";
 
 import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
+import BudgetOverview from "@/components/dashboard/BudgetOverview";
 import CashflowChart from "@/components/dashboard/CashflowChart";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
@@ -36,6 +38,11 @@ import Sidebar from "@/components/layout/Sidebar";
 import {
   calculateMonthlyFinancialSummary,
 } from "@/lib/finance";
+import { calculateMonthlyBudgetSummary } from "@/lib/budget";
+import { formatBudgetMonth } from "@/lib/budget-month";
+import { readStoredBudgets } from "@/lib/budget-storage";
+import { readStoredAccounts } from "@/lib/account-storage";
+import { calculateNetWorthMinor } from "@/lib/accounts";
 import { formatCurrency } from "@/lib/money";
 import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 import {
@@ -87,6 +94,7 @@ const defaultWidgetSettings: WidgetSettings = {
   monthlyExpenses: true,
   monthlySavings: true,
   cashflow: true,
+  budgetOverview: true,
   savingsGoal: true,
   recentTransactions: true,
 };
@@ -100,7 +108,7 @@ const widgetOptions: {
     key: "netWorth",
     title: "Net worth",
     description:
-      "Sample data — not calculated from your transactions.",
+      "Calculated from the accounts included in your net worth.",
   },
   {
     key: "monthlyIncome",
@@ -121,6 +129,11 @@ const widgetOptions: {
     key: "cashflow",
     title: "Cash flow chart",
     description: "Income and expenses over six months.",
+  },
+  {
+    key: "budgetOverview",
+    title: "Monthly budget",
+    description: "Your current budget usage and remaining amount.",
   },
   {
     key: "savingsGoal",
@@ -183,18 +196,27 @@ const defaultLayouts: DashboardLayouts = {
       minH: 4,
     },
     {
-      i: "savingsGoal",
+      i: "budgetOverview",
       x: 8,
       y: 2,
       w: 4,
-      h: 5,
+      h: 4,
+      minW: 3,
+      minH: 4,
+    },
+    {
+      i: "savingsGoal",
+      x: 8,
+      y: 6,
+      w: 4,
+      h: 4,
       minW: 3,
       minH: 3,
     },
     {
       i: "recentTransactions",
       x: 0,
-      y: 7,
+      y: 10,
       w: 12,
       h: 6,
       minW: 6,
@@ -249,12 +271,21 @@ const defaultLayouts: DashboardLayouts = {
       minH: 4,
     },
     {
-      i: "savingsGoal",
+      i: "budgetOverview",
       x: 0,
       y: 9,
-      w: 10,
+      w: 5,
       h: 4,
-      minW: 5,
+      minW: 4,
+      minH: 4,
+    },
+    {
+      i: "savingsGoal",
+      x: 5,
+      y: 9,
+      w: 5,
+      h: 4,
+      minW: 4,
       minH: 3,
     },
     {
@@ -315,9 +346,18 @@ const defaultLayouts: DashboardLayouts = {
       minH: 4,
     },
     {
-      i: "savingsGoal",
+      i: "budgetOverview",
       x: 0,
       y: 13,
+      w: 6,
+      h: 4,
+      minW: 4,
+      minH: 4,
+    },
+    {
+      i: "savingsGoal",
+      x: 0,
+      y: 17,
       w: 6,
       h: 4,
       minW: 3,
@@ -326,7 +366,7 @@ const defaultLayouts: DashboardLayouts = {
     {
       i: "recentTransactions",
       x: 0,
-      y: 17,
+      y: 21,
       w: 6,
       h: 6,
       minW: 4,
@@ -381,9 +421,18 @@ const defaultLayouts: DashboardLayouts = {
       minH: 4,
     },
     {
-      i: "savingsGoal",
+      i: "budgetOverview",
       x: 0,
       y: 13,
+      w: 4,
+      h: 4,
+      minW: 3,
+      minH: 4,
+    },
+    {
+      i: "savingsGoal",
+      x: 0,
+      y: 17,
       w: 4,
       h: 4,
       minW: 2,
@@ -392,7 +441,7 @@ const defaultLayouts: DashboardLayouts = {
     {
       i: "recentTransactions",
       x: 0,
-      y: 17,
+      y: 21,
       w: 4,
       h: 6,
       minW: 3,
@@ -526,6 +575,20 @@ function ExpandedStatCard({
 }
 
 export default function Home() {
+  const router = useRouter();
+
+  const [initialAccounts] = useState(() =>
+    readStoredAccounts([])
+  );
+
+  const accounts = initialAccounts.value;
+
+  const [initialBudgets] = useState(() =>
+    readStoredBudgets([])
+  );
+
+  const budgets = initialBudgets.value;
+
   const [initialTransactions] = useState(() =>
     readStoredTransactions([])
   );
@@ -599,6 +662,37 @@ export default function Home() {
     minorUnitsToEuroAmount(monthlyExpensesMinor) ?? 0;
   const monthlySurplus =
     minorUnitsToEuroAmount(monthlySurplusMinor) ?? 0;
+
+  const netWorthMinor =
+    calculateNetWorthMinor(accounts);
+  const netWorth =
+    minorUnitsToEuroAmount(netWorthMinor) ?? 0;
+  const includedAccounts = accounts.filter(
+    (account) => account.includedInNetWorth
+  );
+  const includedAccountCount =
+    includedAccounts.length;
+  const totalAccountBalanceMinor =
+    accounts.reduce(
+      (total, account) =>
+        total + account.balanceMinor,
+      0
+    );
+  const totalAccountBalance =
+    minorUnitsToEuroAmount(
+      totalAccountBalanceMinor
+    ) ?? 0;
+
+  const currentBudgetMonth = formatBudgetMonth(new Date());
+  const monthlyBudgetSummary =
+    calculateMonthlyBudgetSummary(
+      budgets,
+      transactions,
+      currentBudgetMonth
+    );
+  const activeBudgetCount = budgets.filter(
+    (budget) => budget.month === currentBudgetMonth
+  ).length;
 
   const storageNotice = getStorageNotice(storageHealth);
 
@@ -817,19 +911,42 @@ export default function Home() {
     switch (widgetId) {
       case "netWorth":
         return (
-          <ExpandedStatCard
-            title="Net worth"
-            value={formatCurrency(41_283)}
-            description={
-              dataSource === "sample"
-                ? "Sample data — example only, not calculated from your transactions"
-                : "Not available"
-            }
-            size={size}
-            secondaryLabel="Sample assets"
-            secondaryValue={formatCurrency(52_283)}
-            insight={`This example assumes assets exceed liabilities by ${formatCurrency(41_283)}; Finovo does not track the balances needed to calculate your net worth yet.`}
-          />
+          <button
+            type="button"
+            onClick={() => router.push("/accounts")}
+            aria-label="Open accounts"
+            className="h-full w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:ring-offset-zinc-950"
+          >
+            <ExpandedStatCard
+              title="Net worth"
+              value={formatCurrency(netWorth)}
+              description={
+                accounts.length === 0
+                  ? "Add accounts to calculate your real net worth"
+                  : `Calculated from ${includedAccountCount} included ${
+                      includedAccountCount === 1
+                        ? "account"
+                        : "accounts"
+                    }`
+              }
+              size={size}
+              secondaryLabel={
+                accounts.length === 0
+                  ? "Accounts"
+                  : "All account balances"
+              }
+              secondaryValue={
+                accounts.length === 0
+                  ? "No accounts yet"
+                  : formatCurrency(totalAccountBalance)
+              }
+              insight={
+                accounts.length === 0
+                  ? "Open Accounts to add your checking, savings, investment or cash balances."
+                  : "Only accounts marked as included contribute to net worth. Select this widget to review your accounts."
+              }
+            />
+          </button>
         );
 
       case "monthlyIncome":
@@ -901,6 +1018,15 @@ export default function Home() {
               />
             </div>
           </DashboardPanel>
+        );
+
+      case "budgetOverview":
+        return (
+          <BudgetOverview
+            summary={monthlyBudgetSummary}
+            activeBudgets={activeBudgetCount}
+            onOpenBudget={() => router.push("/budget")}
+          />
         );
 
       case "savingsGoal":

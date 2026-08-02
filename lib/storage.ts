@@ -34,6 +34,7 @@ export const WIDGET_IDS = [
   "monthlyExpenses",
   "monthlySavings",
   "cashflow",
+  "budgetOverview",
   "savingsGoal",
   "recentTransactions",
 ] as const;

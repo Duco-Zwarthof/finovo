@@ -59,6 +59,7 @@ const defaultWidgetSettings: WidgetSettings = {
   monthlyExpenses: true,
   monthlySavings: true,
   cashflow: true,
+  budgetOverview: true,
   savingsGoal: true,
   recentTransactions: true,
 };

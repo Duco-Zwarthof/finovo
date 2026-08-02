@@ -1,0 +1,301 @@
+"use client";
+
+import {
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
+
+import AccountFormModal from "@/components/accounts/AccountFormModal";
+import AccountList from "@/components/accounts/AccountList";
+import AccountsHeader from "@/components/accounts/AccountsHeader";
+import Sidebar from "@/components/layout/Sidebar";
+
+import {
+  readStoredAccounts,
+  writeStoredAccounts,
+  type AccountStorageReadStatus,
+} from "@/lib/account-storage";
+import type { Account } from "@/lib/account-types";
+import {
+  addAccount,
+  calculateNetWorthMinor,
+  deleteAccount,
+  updateAccount,
+} from "@/lib/accounts";
+import { formatCurrency } from "@/lib/money";
+import type { StorageWriteResult } from "@/lib/storage";
+import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
+
+type AccountStorageHealth =
+  | AccountStorageReadStatus
+  | "write-failed";
+
+function subscribeToHydration() {
+  return () => {};
+}
+
+function useHasHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
+}
+
+function getStorageNotice(
+  status: AccountStorageHealth
+) {
+  switch (status) {
+    case "unavailable":
+      return "Account storage is unavailable. Changes may be lost when you reload this page.";
+
+    case "write-failed":
+      return "Your account changes are visible for this session, but they could not be saved.";
+
+    case "unsupported":
+      return "Your saved account data uses an unsupported version and has not been changed.";
+
+    case "invalid":
+      return "Saved account data could not be read. The original value has not been overwritten.";
+
+    default:
+      return null;
+  }
+}
+
+function getWriteHealth(
+  result: StorageWriteResult
+): AccountStorageHealth {
+  if (result.status === "written") {
+    return "valid";
+  }
+
+  if (result.status === "unavailable") {
+    return "unavailable";
+  }
+
+  return "write-failed";
+}
+
+function formatMinorCurrency(amountMinor: number) {
+  return formatCurrency(
+    amountMinorToEuroAmount(amountMinor) ?? 0
+  );
+}
+
+function AccountsSkeleton() {
+  return (
+    <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-52 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function AccountsPage() {
+  const hasHydrated = useHasHydrated();
+
+  const [initialResult] = useState(() =>
+    readStoredAccounts([])
+  );
+
+  const [accounts, setAccounts] = useState<Account[]>(
+    initialResult.value
+  );
+
+  const [storageHealth, setStorageHealth] =
+    useState<AccountStorageHealth>(
+      initialResult.status
+    );
+
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingAccount, setEditingAccount] =
+    useState<Account | null>(null);
+
+  const netWorthMinor = useMemo(
+    () => calculateNetWorthMinor(accounts),
+    [accounts]
+  );
+
+  const includedAccountCount = accounts.filter(
+    (account) => account.includedInNetWorth
+  ).length;
+
+  const storageNotice =
+    getStorageNotice(storageHealth);
+
+  function openAddForm() {
+    setEditingAccount(null);
+    setIsFormOpen(true);
+  }
+
+  function openEditForm(accountId: string) {
+    const account = accounts.find(
+      (candidate) => candidate.id === accountId
+    );
+
+    if (!account) {
+      return;
+    }
+
+    setEditingAccount(account);
+    setIsFormOpen(true);
+  }
+
+  function closeForm() {
+    setEditingAccount(null);
+    setIsFormOpen(false);
+  }
+
+  function persistAccounts(
+    nextAccounts: Account[]
+  ) {
+    if (
+      initialResult.status === "invalid" ||
+      initialResult.status === "unsupported" ||
+      initialResult.status === "unavailable"
+    ) {
+      return;
+    }
+
+    setStorageHealth(
+      getWriteHealth(
+        writeStoredAccounts(nextAccounts)
+      )
+    );
+  }
+
+  function handleSave(account: Account) {
+    let nextAccounts: Account[];
+
+    try {
+      nextAccounts = editingAccount
+        ? updateAccount(accounts, account)
+        : addAccount(accounts, account);
+    } catch {
+      return;
+    }
+
+    setAccounts(nextAccounts);
+    persistAccounts(nextAccounts);
+    closeForm();
+  }
+
+  function handleDelete(accountId: string) {
+    const nextAccounts = deleteAccount(
+      accounts,
+      accountId
+    );
+
+    setAccounts(nextAccounts);
+    persistAccounts(nextAccounts);
+    closeForm();
+  }
+
+  return (
+    <main className="flex h-dvh overflow-hidden bg-zinc-950 text-white">
+      <Sidebar />
+
+      <section className="min-w-0 flex-1 overflow-y-auto p-6 md:p-10">
+        <AccountsHeader
+          onAddAccount={openAddForm}
+        />
+
+        {!hasHydrated ? (
+          <AccountsSkeleton />
+        ) : (
+          <>
+            {storageNotice && (
+              <aside
+                role="status"
+                className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-amber-200">
+                  Account storage notice
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-amber-100/75">
+                  {storageNotice}
+                </p>
+              </aside>
+            )}
+
+            <section className="mt-8 grid gap-4 sm:grid-cols-2">
+              <article className="rounded-3xl border border-white/10 bg-zinc-900 p-6">
+                <p className="text-sm text-zinc-400">
+                  Net worth
+                </p>
+
+                <p className="mt-3 text-3xl font-bold tracking-tight">
+                  {formatMinorCurrency(netWorthMinor)}
+                </p>
+
+                <p className="mt-2 text-sm text-zinc-500">
+                  Based on {includedAccountCount} included{" "}
+                  {includedAccountCount === 1
+                    ? "account"
+                    : "accounts"}.
+                </p>
+              </article>
+
+              <article className="rounded-3xl border border-white/10 bg-zinc-900 p-6">
+                <p className="text-sm text-zinc-400">
+                  Total accounts
+                </p>
+
+                <p className="mt-3 text-3xl font-bold tracking-tight">
+                  {accounts.length}
+                </p>
+
+                <p className="mt-2 text-sm text-zinc-500">
+                  Checking, savings, investment and cash.
+                </p>
+              </article>
+            </section>
+
+            <section
+              aria-labelledby="accounts-list-title"
+              className="mt-10"
+            >
+              <div className="mb-4">
+                <h2
+                  id="accounts-list-title"
+                  className="text-lg font-semibold"
+                >
+                  Your accounts
+                </h2>
+
+                <p className="mt-1 text-sm text-zinc-500">
+                  Select an account to update its balance or settings.
+                </p>
+              </div>
+
+              <AccountList
+                accounts={accounts}
+                onEditAccount={openEditForm}
+              />
+            </section>
+          </>
+        )}
+      </section>
+
+      {isFormOpen && (
+        <AccountFormModal
+          account={editingAccount ?? undefined}
+          onClose={closeForm}
+          onSave={handleSave}
+          onDelete={
+            editingAccount
+              ? handleDelete
+              : undefined
+          }
+        />
+      )}
+    </main>
+  );
+}

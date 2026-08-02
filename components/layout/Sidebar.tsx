@@ -1,6 +1,12 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import {
   ChartNoAxesCombined,
   ChevronRight,
+  Landmark,
   LayoutDashboard,
   PiggyBank,
   Settings,
@@ -14,36 +20,46 @@ const navigationItems = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    active: true,
+    href: "/",
+  },
+  {
+    label: "Accounts",
+    icon: Landmark,
+    href: "/accounts",
   },
   {
     label: "Budget",
     icon: WalletCards,
-    active: false,
+    href: "/budget",
   },
   {
     label: "Investments",
     icon: TrendingUp,
-    active: false,
+    href: null,
   },
   {
     label: "Goals",
     icon: Target,
-    active: false,
+    href: null,
   },
   {
     label: "Settings",
     icon: Settings,
-    active: false,
+    href: null,
   },
-];
+] as const;
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <aside className="sticky top-0 flex h-dvh w-72 shrink-0 flex-col border-r border-white/10 bg-zinc-950 px-5 py-6">
       <div className="flex items-center gap-3 px-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/20">
-          <ChartNoAxesCombined size={23} strokeWidth={2.3} />
+          <ChartNoAxesCombined
+            size={23}
+            strokeWidth={2.3}
+          />
         </div>
 
         <div>
@@ -66,19 +82,23 @@ export default function Sidebar() {
           {navigationItems.map((item) => {
             const Icon = item.icon;
 
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 ${
-                  item.active
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                }`}
-              >
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : item.href !== null &&
+                  pathname.startsWith(item.href);
+
+            const className = `group flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 ${
+              isActive
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                : "text-zinc-400 hover:bg-white/5 hover:text-white"
+            }`;
+
+            const content = (
+              <>
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
-                    item.active
+                    isActive
                       ? "bg-white/10"
                       : "bg-white/[0.03] group-hover:bg-white/5"
                   }`}
@@ -93,11 +113,39 @@ export default function Sidebar() {
                 <ChevronRight
                   size={16}
                   className={`transition ${
-                    item.active
+                    isActive
                       ? "opacity-100"
                       : "translate-x-[-4px] opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
                   }`}
                 />
+              </>
+            );
+
+            if (item.href) {
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  aria-current={
+                    isActive ? "page" : undefined
+                  }
+                  className={className}
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={item.label}
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={`${item.label} is not available yet`}
+                className={`${className} cursor-not-allowed opacity-60`}
+              >
+                {content}
               </button>
             );
           })}
