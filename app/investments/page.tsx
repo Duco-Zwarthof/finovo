@@ -3,8 +3,9 @@
 import {
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
+
+import { useHasHydrated } from "@/hooks/useHasHydrated";
 
 import HoldingFormModal from "@/components/investments/HoldingFormModal";
 import HoldingList from "@/components/investments/HoldingList";
@@ -32,18 +33,6 @@ import type { StorageWriteResult } from "@/lib/storage";
 type InvestmentStorageHealth =
   | InvestmentStorageReadStatus
   | "write-failed";
-
-function subscribeToHydration() {
-  return () => {};
-}
-
-function useHasHydrated() {
-  return useSyncExternalStore(
-    subscribeToHydration,
-    () => true,
-    () => false
-  );
-}
 
 function getStorageNotice(
   status: InvestmentStorageHealth

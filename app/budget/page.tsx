@@ -3,8 +3,9 @@
 import {
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
+
+import { useHasHydrated } from "@/hooks/useHasHydrated";
 
 import BudgetCategoryList from "@/components/budget/BudgetCategoryList";
 import BudgetFormModal from "@/components/budget/BudgetFormModal";
@@ -110,18 +111,6 @@ function getBudgetWriteHealth(
     default:
       return "write-failed";
   }
-}
-
-function subscribeToHydration() {
-  return () => {};
-}
-
-function useHasHydrated() {
-  return useSyncExternalStore(
-    subscribeToHydration,
-    () => true,
-    () => false
-  );
 }
 
 function BudgetPageSkeleton() {

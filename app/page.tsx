@@ -12,14 +12,11 @@ import {
 import { verticalCompactor } from "react-grid-layout/core";
 
 import {
-  Eye,
   EyeOff,
   GripVertical,
   Lock,
-  RotateCcw,
   SlidersHorizontal,
   Unlock,
-  X,
 } from "lucide-react";
 
 import "react-grid-layout/css/styles.css";
@@ -31,6 +28,8 @@ import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import BudgetOverview from "@/components/dashboard/BudgetOverview";
 import CashflowChart from "@/components/dashboard/CashflowChart";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
+import DashboardCustomizer from "@/components/dashboard/DashboardCustomizer";
+import ExpandedStatCard from "@/components/dashboard/ExpandedStatCard";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -46,6 +45,20 @@ import { calculateNetWorthMinor } from "@/lib/accounts";
 import { formatCurrency } from "@/lib/money";
 import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 import {
+  defaultLayouts,
+  defaultWidgetSettings,
+  widgetOptions,
+} from "@/lib/dashboard-config";
+import {
+  filterDashboardLayout,
+  formatSurplusRate,
+  getDashboardStorageNotice,
+  getWidgetTitle,
+  type StorageArea,
+  type StorageHealth,
+  type StorageHealthState,
+} from "@/lib/dashboard-helpers";
+import {
   STORAGE_KEYS,
   mergeDashboardLayoutsPreservingHidden,
   readStoredDashboardLayouts,
@@ -57,7 +70,6 @@ import {
   writeStoredWidgetSettings,
   type DashboardBreakpoint,
   type DashboardLayouts,
-  type StorageReadStatus,
   type StorageWriteResult,
   type WidgetId,
   type WidgetSettings,
@@ -76,503 +88,6 @@ type WidgetSize = {
   width: number;
   height: number;
 };
-
-type StorageArea = keyof typeof STORAGE_KEYS;
-
-type StorageHealth =
-  | StorageReadStatus
-  | "write-failed";
-
-type StorageHealthState = Record<
-  StorageArea,
-  StorageHealth
->;
-
-const defaultWidgetSettings: WidgetSettings = {
-  netWorth: true,
-  monthlyIncome: true,
-  monthlyExpenses: true,
-  monthlySavings: true,
-  cashflow: true,
-  budgetOverview: true,
-  savingsGoal: true,
-  recentTransactions: true,
-};
-
-const widgetOptions: {
-  key: WidgetId;
-  title: string;
-  description: string;
-}[] = [
-  {
-    key: "netWorth",
-    title: "Net worth",
-    description:
-      "Calculated from the accounts included in your net worth.",
-  },
-  {
-    key: "monthlyIncome",
-    title: "Monthly income",
-    description: "Income received during the month.",
-  },
-  {
-    key: "monthlyExpenses",
-    title: "Monthly expenses",
-    description: "Expenses recorded during the month.",
-  },
-  {
-    key: "monthlySavings",
-    title: "Monthly surplus",
-    description: "Your income minus your expenses.",
-  },
-  {
-    key: "cashflow",
-    title: "Cash flow chart",
-    description: "Income and expenses over six months.",
-  },
-  {
-    key: "budgetOverview",
-    title: "Monthly budget",
-    description: "Your current budget usage and remaining amount.",
-  },
-  {
-    key: "savingsGoal",
-    title: "Savings goal",
-    description:
-      "Sample goal — no saved goal data is connected.",
-  },
-  {
-    key: "recentTransactions",
-    title: "Recent transactions",
-    description: "Your latest financial activity.",
-  },
-];
-
-const defaultLayouts: DashboardLayouts = {
-  lg: [
-    {
-      i: "netWorth",
-      x: 0,
-      y: 0,
-      w: 3,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlyIncome",
-      x: 3,
-      y: 0,
-      w: 3,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlyExpenses",
-      x: 6,
-      y: 0,
-      w: 3,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlySavings",
-      x: 9,
-      y: 0,
-      w: 3,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "cashflow",
-      x: 0,
-      y: 2,
-      w: 8,
-      h: 5,
-      minW: 5,
-      minH: 4,
-    },
-    {
-      i: "budgetOverview",
-      x: 8,
-      y: 2,
-      w: 4,
-      h: 4,
-      minW: 3,
-      minH: 4,
-    },
-    {
-      i: "savingsGoal",
-      x: 8,
-      y: 6,
-      w: 4,
-      h: 4,
-      minW: 3,
-      minH: 3,
-    },
-    {
-      i: "recentTransactions",
-      x: 0,
-      y: 10,
-      w: 12,
-      h: 6,
-      minW: 6,
-      minH: 4,
-    },
-  ],
-
-  md: [
-    {
-      i: "netWorth",
-      x: 0,
-      y: 0,
-      w: 5,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlyIncome",
-      x: 5,
-      y: 0,
-      w: 5,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlyExpenses",
-      x: 0,
-      y: 2,
-      w: 5,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlySavings",
-      x: 5,
-      y: 2,
-      w: 5,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "cashflow",
-      x: 0,
-      y: 4,
-      w: 10,
-      h: 5,
-      minW: 6,
-      minH: 4,
-    },
-    {
-      i: "budgetOverview",
-      x: 0,
-      y: 9,
-      w: 5,
-      h: 4,
-      minW: 4,
-      minH: 4,
-    },
-    {
-      i: "savingsGoal",
-      x: 5,
-      y: 9,
-      w: 5,
-      h: 4,
-      minW: 4,
-      minH: 3,
-    },
-    {
-      i: "recentTransactions",
-      x: 0,
-      y: 13,
-      w: 10,
-      h: 6,
-      minW: 6,
-      minH: 4,
-    },
-  ],
-
-  sm: [
-    {
-      i: "netWorth",
-      x: 0,
-      y: 0,
-      w: 6,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlyIncome",
-      x: 0,
-      y: 2,
-      w: 6,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlyExpenses",
-      x: 0,
-      y: 4,
-      w: 6,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "monthlySavings",
-      x: 0,
-      y: 6,
-      w: 6,
-      h: 2,
-      minW: 3,
-      minH: 2,
-    },
-    {
-      i: "cashflow",
-      x: 0,
-      y: 8,
-      w: 6,
-      h: 5,
-      minW: 4,
-      minH: 4,
-    },
-    {
-      i: "budgetOverview",
-      x: 0,
-      y: 13,
-      w: 6,
-      h: 4,
-      minW: 4,
-      minH: 4,
-    },
-    {
-      i: "savingsGoal",
-      x: 0,
-      y: 17,
-      w: 6,
-      h: 4,
-      minW: 3,
-      minH: 3,
-    },
-    {
-      i: "recentTransactions",
-      x: 0,
-      y: 21,
-      w: 6,
-      h: 6,
-      minW: 4,
-      minH: 4,
-    },
-  ],
-
-  xs: [
-    {
-      i: "netWorth",
-      x: 0,
-      y: 0,
-      w: 4,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlyIncome",
-      x: 0,
-      y: 2,
-      w: 4,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlyExpenses",
-      x: 0,
-      y: 4,
-      w: 4,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "monthlySavings",
-      x: 0,
-      y: 6,
-      w: 4,
-      h: 2,
-      minW: 2,
-      minH: 2,
-    },
-    {
-      i: "cashflow",
-      x: 0,
-      y: 8,
-      w: 4,
-      h: 5,
-      minW: 3,
-      minH: 4,
-    },
-    {
-      i: "budgetOverview",
-      x: 0,
-      y: 13,
-      w: 4,
-      h: 4,
-      minW: 3,
-      minH: 4,
-    },
-    {
-      i: "savingsGoal",
-      x: 0,
-      y: 17,
-      w: 4,
-      h: 4,
-      minW: 2,
-      minH: 3,
-    },
-    {
-      i: "recentTransactions",
-      x: 0,
-      y: 21,
-      w: 4,
-      h: 6,
-      minW: 3,
-      minH: 4,
-    },
-  ],
-};
-
-function isWidgetId(value: string): value is WidgetId {
-  return widgetOptions.some((widget) => widget.key === value);
-}
-
-function getWidgetTitle(widgetId: WidgetId) {
-  return (
-    widgetOptions.find((widget) => widget.key === widgetId)
-      ?.title ?? widgetId
-  );
-}
-
-function formatSurplusRate(rate: number | null) {
-  if (rate === null) {
-    return "Not available";
-  }
-
-  const roundedRate = Math.round(rate * 10) / 10;
-
-  if (roundedRate === 0 && rate < 0) {
-    return "Below 0%";
-  }
-
-  return `${roundedRate}%`;
-}
-
-function getStorageNotice(
-  storageHealth: StorageHealthState
-) {
-  const statuses = Object.values(storageHealth);
-
-  if (
-    statuses.includes("unavailable") ||
-    statuses.includes("write-failed")
-  ) {
-    return "Changes could not be saved in this browser. They may be lost when you reload the page.";
-  }
-
-  if (statuses.includes("invalid")) {
-    return "Some saved dashboard data was invalid, so safe defaults are shown instead.";
-  }
-
-  if (statuses.includes("recovered")) {
-    return "Some invalid saved data was ignored. Valid transactions and dashboard preferences were preserved.";
-  }
-
-  return null;
-}
-
-function filterLayout(
-  layout: Layout | undefined,
-  widgetSettings: WidgetSettings
-): Layout {
-  if (!layout) {
-    return [];
-  }
-
-  return layout.filter((item) => {
-    if (!isWidgetId(item.i)) {
-      return false;
-    }
-
-    return widgetSettings[item.i];
-  });
-}
-
-function ExpandedStatCard({
-  title,
-  value,
-  description,
-  size,
-  secondaryLabel,
-  secondaryValue,
-  insight,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  size: WidgetSize;
-  secondaryLabel: string;
-  secondaryValue: string;
-  insight: string;
-}) {
-  const isWide = size.width >= 5;
-  const isTall = size.height >= 3;
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/80 p-5 shadow-lg shadow-black/10">
-      <div>
-        <p className="text-sm font-medium text-zinc-400">
-          {title}
-        </p>
-
-        <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-          {value}
-        </p>
-
-        <p className="mt-2 text-sm text-zinc-500">
-          {description}
-        </p>
-      </div>
-
-      {(isWide || isTall) && (
-        <div className="mt-auto pt-5">
-          <div className="border-t border-white/10 pt-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-600">
-              {secondaryLabel}
-            </p>
-
-            <p className="mt-2 text-lg font-semibold text-zinc-200">
-              {secondaryValue}
-            </p>
-
-            {isTall && (
-              <p className="mt-3 text-sm leading-6 text-zinc-500">
-                {insight}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Home() {
   const router = useRouter();
@@ -694,7 +209,7 @@ export default function Home() {
     (budget) => budget.month === currentBudgetMonth
   ).length;
 
-  const storageNotice = getStorageNotice(storageHealth);
+  const storageNotice = getDashboardStorageNotice(storageHealth);
 
   const visibleWidgetIds = useMemo(
     () =>
@@ -710,19 +225,19 @@ export default function Home() {
   const visibleLayouts =
     useMemo<DashboardLayouts>(() => {
       return {
-        lg: filterLayout(
+        lg: filterDashboardLayout(
           layouts.lg,
           widgetSettings
         ),
-        md: filterLayout(
+        md: filterDashboardLayout(
           layouts.md,
           widgetSettings
         ),
-        sm: filterLayout(
+        sm: filterDashboardLayout(
           layouts.sm,
           widgetSettings
         ),
-        xs: filterLayout(
+        xs: filterDashboardLayout(
           layouts.xs,
           widgetSettings
         ),
@@ -1293,159 +808,18 @@ export default function Home() {
         />
       )}
 
-      {showCustomizePanel && (
-        <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
-          onMouseDown={() =>
-            setShowCustomizePanel(false)
-          }
-        >
-          <aside
-            className="flex h-dvh w-full max-w-md flex-col border-l border-white/10 bg-zinc-950 shadow-2xl"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="flex items-start justify-between border-b border-white/10 p-6">
-              <div>
-                <h2 className="text-xl font-bold">
-                  Customize dashboard
-                </h2>
-
-                <p className="mt-1 text-sm text-zinc-500">
-                  Choose which widgets appear on
-                  your homepage.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowCustomizePanel(false)
-                }
-                aria-label="Close customization panel"
-                className="rounded-xl p-2 text-zinc-400 transition hover:bg-white/5 hover:text-white"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-3">
-                {widgetOptions.map(
-                  (widget) => {
-                    const isVisible =
-                      widgetSettings[
-                        widget.key
-                      ];
-
-                    return (
-                      <button
-                        key={widget.key}
-                        type="button"
-                        onClick={() =>
-                          toggleWidget(
-                            widget.key
-                          )
-                        }
-                        className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition ${
-                          isVisible
-                            ? "border-blue-500/20 bg-blue-500/[0.07]"
-                            : "border-white/10 bg-white/[0.02] hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                            isVisible
-                              ? "bg-blue-500/15 text-blue-400"
-                              : "bg-zinc-900 text-zinc-500"
-                          }`}
-                        >
-                          {isVisible ? (
-                            <Eye
-                              size={18}
-                            />
-                          ) : (
-                            <EyeOff
-                              size={18}
-                            />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-white">
-                            {widget.title}
-                          </p>
-
-                          <p className="mt-1 text-xs leading-5 text-zinc-500">
-                            {
-                              widget.description
-                            }
-                          </p>
-                        </div>
-
-                        <div
-                          className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                            isVisible
-                              ? "bg-blue-600"
-                              : "bg-zinc-700"
-                          }`}
-                        >
-                          <div
-                            className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
-                              isVisible
-                                ? "left-6"
-                                : "left-1"
-                            }`}
-                          />
-                        </div>
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 p-6">
-              <div className="mb-4 flex items-center justify-between text-sm">
-                <span className="text-zinc-500">
-                  Visible widgets
-                </span>
-
-                <span className="font-semibold text-white">
-                  {
-                    visibleWidgetIds.length
-                  }{" "}
-                  of {widgetOptions.length}
-                </span>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={resetDashboard}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-white/5 hover:text-white"
-                >
-                  <RotateCcw size={16} />
-                  Reset
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowCustomizePanel(
-                      false
-                    )
-                  }
-                  className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      )}
+      <DashboardCustomizer
+        isOpen={showCustomizePanel}
+        widgetSettings={widgetSettings}
+        visibleWidgetCount={
+          visibleWidgetIds.length
+        }
+        onClose={() =>
+          setShowCustomizePanel(false)
+        }
+        onReset={resetDashboard}
+        onToggleWidget={toggleWidget}
+      />
     </main>
   );
 }

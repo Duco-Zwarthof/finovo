@@ -3,8 +3,9 @@
 import {
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
+
+import { useHasHydrated } from "@/hooks/useHasHydrated";
 
 import AccountFormModal from "@/components/accounts/AccountFormModal";
 import AccountList from "@/components/accounts/AccountList";
@@ -30,18 +31,6 @@ import type { StorageWriteResult } from "@/lib/storage";
 type AccountStorageHealth =
   | AccountStorageReadStatus
   | "write-failed";
-
-function subscribeToHydration() {
-  return () => {};
-}
-
-function useHasHydrated() {
-  return useSyncExternalStore(
-    subscribeToHydration,
-    () => true,
-    () => false
-  );
-}
 
 function getStorageNotice(
   status: AccountStorageHealth
