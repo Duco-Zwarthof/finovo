@@ -40,7 +40,7 @@ const navigationItems = [
   {
     label: "Goals",
     icon: Target,
-    href: null,
+    href: "/goals",
   },
   {
     label: "Settings",

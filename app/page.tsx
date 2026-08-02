@@ -20,6 +20,7 @@ import type { Transaction } from "@/lib/types";
 
 import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import BudgetOverview from "@/components/dashboard/BudgetOverview";
+import GoalOverview from "@/components/dashboard/GoalOverview";
 import CashflowChart from "@/components/dashboard/CashflowChart";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import DashboardCustomizer from "@/components/dashboard/DashboardCustomizer";
@@ -35,6 +36,7 @@ import {
 import { calculateMonthlyBudgetSummary } from "@/lib/budget";
 import { formatBudgetMonth } from "@/lib/budget-month";
 import { readStoredBudgets } from "@/lib/budget-storage";
+import { readStoredGoals } from "@/lib/goal-storage";
 import { readStoredAccounts } from "@/lib/account-storage";
 import { calculateNetWorthMinor } from "@/lib/accounts";
 import { formatCurrency } from "@/lib/money";
@@ -96,6 +98,12 @@ export default function Home() {
   );
 
   const budgets = initialBudgets.value;
+
+  const [initialGoals] = useState(() =>
+    readStoredGoals([])
+  );
+
+  const goals = initialGoals.value;
 
   const [initialTransactions] = useState(() =>
     readStoredTransactions([])
@@ -198,6 +206,11 @@ export default function Home() {
   const activeBudgetCount = budgets.filter(
     (budget) => budget.month === currentBudgetMonth
   ).length;
+
+  const primaryGoal =
+    goals.find((goal) => goal.status === "active") ??
+    goals[0] ??
+    null;
 
   const storageNotice = getDashboardStorageNotice(storageHealth);
 
@@ -539,46 +552,18 @@ export default function Home() {
           <DashboardPanel
             title="Savings goal"
             description={
-              dataSource === "sample"
-                ? "Sample data — example goal, not based on your transactions"
-                : "Not available"
+              primaryGoal
+                ? "Progress toward your primary active goal"
+                : "Add a goal to start tracking progress"
             }
           >
-            <div className="flex h-full flex-col">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-3xl font-bold">
-                    {formatCurrency(11_000)}
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-500">
-                    of {formatCurrency(30_000)} saved
-                  </p>
-                </div>
-
-                <p className="text-sm font-semibold text-blue-500">
-                  37%
-                </p>
-              </div>
-
-              <div className="mt-6 h-3 overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full w-[37%] rounded-full bg-blue-600" />
-              </div>
-
-              <div className="mt-auto pt-5">
-                <p className="text-sm text-zinc-400">
-                  {formatCurrency(19_000)} remaining
-                </p>
-
-                {size.height >= 5 && (
-                  <p className="mt-3 text-sm leading-6 text-zinc-500">
-                    This example assumes a {formatCurrency(500)}
-                    monthly contribution and would take
-                    approximately another 38 months.
-                  </p>
-                )}
-              </div>
-            </div>
+            <GoalOverview
+              goal={primaryGoal}
+              size={size}
+              onOpenGoals={() =>
+                router.push("/goals")
+              }
+            />
           </DashboardPanel>
         );
 

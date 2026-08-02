@@ -55,7 +55,7 @@ export const widgetOptions: {
     key: "savingsGoal",
     title: "Savings goal",
     description:
-      "Sample goal — no saved goal data is connected.",
+      "Track progress toward your primary active savings goal.",
   },
   {
     key: "recentTransactions",
