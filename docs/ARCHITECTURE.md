@@ -1,523 +1,422 @@
 # Finovo Architecture
 
-> **Version:** 1.0
-> **Status:** Active
+> **Version:** 2.0  
+> **Status:** Active  
+> **Implementation model:** Local-first modular Next.js application
 
 ---
 
 # Purpose
 
-This document describes the architecture of Finovo.
+This document describes the architecture currently used by Finovo and the direction for future refactoring.
 
-Its purpose is to help contributors and AI agents understand how the application is organized before implementing new functionality.
+It exists to help contributors and AI agents understand:
 
-The architecture prioritizes:
+- where code belongs;
+- how financial data is represented;
+- how browser persistence works;
+- how pages, components and domain modules interact;
+- which architectural limitations are temporary.
 
-- scalability
-- maintainability
-- readability
-- reusability
-- separation of concerns
-
----
-
-# Core Principles
-
-Finovo should be easy to extend.
-
-Adding a new feature should require adding code, not rewriting existing code.
-
-Always prefer extending the architecture over bypassing it.
+Documentation must describe the actual implementation, not an idealized architecture that the code does not yet follow.
 
 ---
 
-# Architectural Philosophy
+# Current Technology
 
-Finovo follows a modular architecture.
+Finovo currently uses:
 
-The project should consist of small reusable building blocks rather than large tightly coupled modules.
+- Next.js App Router
+- React client components
+- TypeScript
+- Tailwind CSS
+- Vitest
+- `react-grid-layout`
+- browser `localStorage`
 
-Prefer many focused components over a few large components.
+The current alpha has no authentication, server database, cloud synchronization or external bank connection.
 
 ---
 
-# Layered Architecture
+# Project Structure
 
-Application layers should remain separated.
+```text
+app/
+  page.tsx
+  accounts/page.tsx
+  budget/page.tsx
+  investments/page.tsx
 
-```
-Pages / Routes
+components/
+  accounts/
+  budget/
+  dashboard/
+  investments/
+  layout/
 
-↓
+lib/
+  domain types
+  pure financial calculations
+  persistence boundaries
+  sample and transaction state
+  focused unit tests
 
-Layouts
-
-↓
-
-Widgets
-
-↓
-
-Components
-
-↓
-
-Hooks
-
-↓
-
-Services
-
-↓
-
-Utilities
-
-↓
-
-Data
+docs/
+  product, architecture and development documentation
 ```
 
-Each layer has a single responsibility.
-
 ---
 
-# Responsibilities
+# Architectural Principles
 
-## Routes
+## 1. Financial values use whole minor units
 
-Responsible for:
-
-- page composition
-- metadata
-- routing
-
-Routes should contain almost no business logic.
-
----
-
-## Layouts
-
-Responsible for:
-
-- positioning
-- page structure
-- responsive layout
-
-Layouts should never contain financial calculations.
-
----
-
-## Widgets
-
-Widgets are the primary building blocks of Finovo.
-
-Every widget answers exactly one financial question.
-
-Widgets may use components internally.
-
-Widgets should never depend on other widgets.
-
----
-
-## Components
-
-Components are reusable UI elements.
-
-Examples:
-
-- buttons
-- cards
-- charts
-- dialogs
-- inputs
-- progress bars
-
-Components should remain generic whenever possible.
-
----
-
-## Hooks
-
-Hooks contain reusable behavior.
-
-Examples:
-
-- localStorage
-- responsive helpers
-- calculations
-- preferences
-- dashboard state
-
-Hooks should avoid UI.
-
----
-
-## Services
-
-Services communicate with external systems.
-
-Examples:
-
-- authentication
-- APIs
-- storage
-- future banking integrations
-
-Business logic belongs here whenever external communication is involved.
-
----
-
-## Utilities
-
-Utilities contain pure helper functions.
-
-Examples:
-
-- formatting
-- currency
-- dates
-- percentages
-- calculations
-
-Utilities should be deterministic.
-
----
-
-# Business Logic
-
-Business logic should never live inside presentation components.
-
-Instead:
-
-```
-UI
-
-↓
-
-Hook
-
-↓
-
-Service
-
-↓
-
-Utility
-```
-
-The UI should describe.
-
-The logic should decide.
-
----
-
-# Financial Calculations
-
-Financial calculations should always be centralized.
-
-Never duplicate formulas.
-
-Never perform financial calculations directly inside components.
-
-Instead create reusable functions.
-
-Examples:
-
-- compound interest
-- surplus rate
-- investment growth
-- budget calculations
-- financial health score
-
-## Current Monthly Summary
-
-Current-month reporting is implemented with two pure utility boundaries:
-
-- `lib/date.ts` strictly parses and formats local `YYYY-MM-DD` calendar dates and determines calendar-month membership.
-- `lib/finance.ts` aggregates current-month income and expenses, then derives monthly surplus and surplus rate.
-
-UI components consume these results and do not define their own date parsers or monthly financial formulas. A reference date can be supplied to the financial summary function so reporting-period behavior remains deterministic in tests.
-
-Invalid or impossible transaction dates are excluded from date-based summaries and chart groupings rather than normalized into another date.
-
-## Currency Presentation
-
-Currency presentation is centralized in `lib/money.ts` and remains separate from financial calculations.
-
-- All normal monetary values use EUR with the `en-IE` locale and exactly two decimal places.
-- Compact EUR formatting is reserved for chart axes; cards, transactions, filters, prose and chart tooltips use exact formatting.
-- Editable amount fields use the currency symbol derived by the shared formatter while retaining their existing numeric input values.
-
-This boundary changes presentation only. Domain transactions now carry both the temporary euro `amount` compatibility value and the canonical `amountMinor` whole-cent value. Currency formatting output remains unchanged.
-
-## Transaction Amount Model
-
-`lib/transaction-amount.ts` owns pure conversion, validation and compatibility checks for transaction amounts. `amountMinor` is the canonical domain representation: a finite, non-negative safe integer containing whole euro cents. Transaction direction remains represented by `type`, so expenses do not use negative amounts.
-
-The domain `Transaction` temporarily retains `amount` alongside required `amountMinor`. The two values are compatible only when the decimal euro amount converts exactly to the same whole-cent integer. New form values derive cents from the decimal input string instead of using floating-point multiplication as a canonical representation.
-
-Persisted transaction V2 now stores canonical `amountMinor`. V1 and legacy amount-only reads derive `amountMinor` after validating `amount`; V2 reads derive the temporary domain `amount` compatibility value from validated minor units. No storage-key change or initialization migration is introduced.
-
----
-
-# Testing
-
-Focused pure utility tests are colocated in `lib/*.test.ts` and run with Vitest in a Node environment. Financial and calendar behavior should use injected reference dates instead of depending on the machine clock.
-
----
-
-# State Management
-
-State should remain as local as possible.
-
-Only share state when necessary.
-
-Guidelines:
-
-- Local component state first.
-- Shared state second.
-- Persistent storage only when valuable.
-
-Avoid unnecessary global state.
-
-## Browser-Local Persistence
-
-The dashboard currently persists three independent state slices in browser `localStorage` under stable keys:
-
-- `finovo-transactions` stores the current transaction persistence envelope.
-- `finovo-dashboard-widgets` stores widget visibility settings.
-- `finovo-dashboard-layouts-v2` stores responsive widget layouts, including position and dimensions.
-
-`lib/storage.ts` is the boundary for reading, parsing, validating, normalizing, writing and removing these values. UI components do not parse stored JSON directly. `lib/persisted-transactions.ts` defines the readable amount-only V1 model and current minor-unit V2 model separately from the dual-field domain model in `lib/types.ts`.
-
-New transaction writes use the V2 envelope:
+Domain money values are stored as safe integer cents.
 
 ```ts
-{
-  version: 2,
-  transactions: PersistedTransactionV2[]
-}
+amountMinor: number
 ```
 
-The storage key remains unchanged. Existing V1 envelopes and unversioned transaction arrays remain readable and are not rewritten during initialization. Their validated, user-owned transactions migrate through the normal storage boundary only when the next explicit add, edit or delete is successfully written in V2. A valid empty legacy or V1 array remains intentional empty user data.
+Floating-point euro values are accepted only at input and presentation boundaries.
 
-Stored JSON is treated as untrusted input:
+Conversions are centralized in:
 
-- V1 entries validate decimal euro `amount` and normalize it into both domain amount fields. V2 entries validate safe, non-negative integer `amountMinor` and derive the temporary domain `amount` value. Unsupported versions and malformed envelopes are invalid.
-- Transaction entries must contain a non-empty ID and title, a supported category and type, a finite positive amount and a date accepted by the strict local-date utility.
-- In a partially invalid transaction array, valid entries are retained in their original order. Invalid entries and later entries with duplicate IDs are discarded.
-- Widget settings are accepted only for known widget IDs with boolean values. Invalid or missing fields use their in-code defaults without resetting other valid settings.
-- Responsive layouts accept only known widget IDs and valid grid positions and dimensions. Missing or invalid widget layouts use their breakpoint defaults.
-- Layout updates merge with the complete saved layout so hiding a widget does not erase its stored position or size.
-
-Reads distinguish missing, valid, partially recovered, invalid and unavailable storage. Malformed JSON, unsupported transaction versions and wholly structurally invalid payloads produce the invalid outcome. Missing or unusable values return in-code fallbacks, while partially valid values return a sanitized result. Initialization never rewrites storage: legacy, V1, missing, invalid and partially recovered payloads remain untouched. The next successful user change writes valid or partially recovered transaction data using the V2 envelope; malformed and unsupported transaction payloads remain untouched even after an in-memory transaction change. Dashboard reset deliberately removes the layout key so breakpoint defaults apply on the next load. Storage access and quota failures return an explicit failure result without crashing the dashboard, leave the prior stored payload unchanged and cause the UI to warn that changes may not survive a reload.
-
-Persisted state is initialized lazily in the client component without an initial persistence write. Browser globals are guarded during server rendering, and the responsive dashboard content waits for its client-side container measurement so server fallback state cannot cause a hydration mismatch.
-
-This data belongs only to the current origin and browser profile on the current device. It is not authenticated, cloud-synchronized, shared across browsers or devices, or backed up. Clearing site data or using ephemeral/private browsing can remove it.
-
-## Demo and User Transaction State
-
-`lib/transaction-data.ts` converts the transaction-storage read result into a `TransactionDataState` whose source is explicitly either `demo` or `user`. The sample array remains separate from browser-local user transactions and is supplied only for display while the state source is `demo`.
-
-Initial selection is deterministic:
-
-| Transaction storage result | Transaction state |
-|----------------------------|-------------------|
-| Missing key | Demo source with the in-code sample transactions |
-| Valid empty array | User source with an intentional empty dataset |
-| Recovered array with no retained entries | User source with an empty recovery dataset |
-| Valid or recovered array with user entries | User source with the validated entries |
-| Valid or recovered array containing only exact legacy seed rows | Demo source with the in-code sample transactions |
-| Invalid or unavailable value | User source with an empty recovery dataset and a visible storage warning |
-
-Earlier Finovo versions could persist the known sample rows through transaction actions. For compatibility, exact field-for-field copies of those legacy seed rows are removed from otherwise valid or recovered user arrays. A legacy array containing only exact seed rows is presented as demo data. Any changed row, including one that reuses a seed ID but differs in another field, remains user data so this compatibility rule does not discard an edited transaction.
-
-Demo transitions preserve the boundary:
-
-- Adding a transaction creates user state containing only the new transaction.
-- Editing a demo row creates user state containing only the edited transaction as a new user-owned record.
-- Deleting a demo row creates an intentional empty user state.
-- User-state changes continue to operate on the user array normally.
-- Deleting the last user transaction persists a V2 envelope whose `transactions` value is `[]`; reloading keeps the dashboard empty and does not reactivate demo data.
-
-The demo array is never written to `finovo-transactions` or merged into a user write. Initialization performs no storage write. If an explicit change cannot be saved, the in-memory state remains user-owned and the existing storage warning explains that the change may be lost on reload; storage itself remains untouched.
-
-When transaction state is demo, the dashboard renders a visible, accessible explanation that the displayed values are examples and are not saved as the user's financial data. Net-worth and savings-goal values still have no user-data source, so those widgets remain explicitly labelled as sample examples in both transaction states.
-
-The demo boundary does not change the transaction storage key, widget IDs or dashboard layouts. Transaction persistence now uses the separately documented V2 envelope without changing demo-state selection or transitions.
-
----
-
-# Dashboard
-
-The dashboard is the application's home.
-
-Its purpose is answering:
-
-"How are my finances today?"
-
-Every widget should contribute to answering this question.
-
----
-
-# Widget System
-
-Widgets should be:
-
-- independent
-- reusable
-- configurable
-- draggable
-- responsive
-
-Widgets should never assume where they are rendered.
-
-Widgets receive data.
-
-Widgets render insights.
-
----
-
-# Data Flow
-
-Data should move in one direction.
-
-```
-Source
-
-↓
-
-Processing
-
-↓
-
-Calculation
-
-↓
-
-Presentation
+```text
+lib/transaction-amount.ts
 ```
 
-Avoid circular dependencies.
-
-Avoid bidirectional data flow.
+Calculations must not mix decimal euro values with minor-unit domain values.
 
 ---
 
-# Component Size
+## 2. Business logic belongs in `lib`
 
-Prefer small files.
+Pure validation, CRUD and financial calculations live in domain modules such as:
 
-Recommended sizes:
+```text
+lib/finance.ts
+lib/budget.ts
+lib/accounts.ts
+lib/investments.ts
+```
 
-Components:
-100–250 lines
-
-Hooks:
-50–200 lines
-
-Utilities:
-Small focused functions
-
-Large files should be split.
+Presentation components may call these functions but should not reimplement their formulas.
 
 ---
 
-# Naming
+## 3. Persisted JSON is untrusted
 
-Use descriptive names.
+Browser-stored data is parsed and runtime-validated before it enters application state.
 
-Good:
+Current persistence modules include:
 
-SavingsWidget
+```text
+lib/storage.ts
+lib/budget-storage.ts
+lib/account-storage.ts
+lib/investment-storage.ts
+```
 
-InvestmentGrowthChart
+Each module:
 
-BudgetProgressCard
-
-Bad:
-
-Widget1
-
-Helper
-
-Utils2
-
-Names should explain purpose.
-
----
-
-# Folder Structure
-
-Every folder should have a clear responsibility.
-
-Avoid dumping unrelated files into the same directory.
-
-Prefer feature grouping over random grouping.
+- owns its storage key;
+- owns its persistence version;
+- validates stored payloads;
+- returns an explicit read status;
+- avoids overwriting malformed or unsupported payloads during initialization;
+- reports unavailable or failed writes without crashing the interface.
 
 ---
 
-# Reusability
+## 4. Local-first is a temporary product boundary
 
-Before creating new code ask:
+The alpha stores data in the current browser profile and origin.
 
-Can this become reusable?
+This provides:
 
-If yes:
+- no cross-device synchronization;
+- no durable backup guarantee;
+- no user authentication;
+- no server-side authorization;
+- no protection from someone who can access the same browser profile;
+- no automatic encryption of local values.
 
-Extract it.
-
-Future development should become easier, not harder.
-
----
-
-# Performance
-
-Optimize only when necessary.
-
-Prefer:
-
-- memoization for expensive calculations
-- lazy loading
-- reusable rendering
-- efficient state updates
-
-Avoid premature optimization.
+Finovo must not present browser-local persistence as secure cloud storage.
 
 ---
 
-# Error Handling
+## 5. Demo data and user data remain separate
 
-Never fail silently.
+Sample transactions are display-only.
 
-Always:
+The transaction state explicitly distinguishes:
 
-- validate inputs
-- show meaningful errors
-- recover gracefully
-- log unexpected failures
+```text
+demo
+user
+```
 
----
+A user mutation transitions to user-owned state without copying sample rows into stored financial history.
 
-# Future Scalability
-
-The architecture should support future additions such as:
-
-- banking integrations
-- investment portfolios
-- AI financial coach
-- recurring transactions
-- subscriptions
-- shared household budgets
-- premium features
-
-New functionality should integrate naturally.
+Static example values must be visibly identified unless a real data source exists.
 
 ---
 
-# Final Principle
+# Current Application Layers
 
-Architecture exists to make future development easier.
+The current implementation can be understood as four practical layers.
 
-Every architectural decision should reduce complexity rather than increase it.
+## Route layer
+
+Located in `app/`.
+
+Routes currently handle:
+
+- page composition;
+- client state;
+- storage initialization;
+- persistence decisions;
+- modal state;
+- orchestration of domain calculations.
+
+This is more responsibility than the long-term target. Accounts, Budget and Investments currently repeat similar route-level patterns. A planned cleanup will move reusable behavior into shared hooks and helpers.
+
+## Feature component layer
+
+Located in feature folders under `components/`.
+
+Examples:
+
+```text
+components/accounts/
+components/budget/
+components/investments/
+components/dashboard/
+```
+
+These components are responsible for presentation and user interaction.
+
+Feature components may be domain-aware, but formulas and persistence validation should remain in `lib`.
+
+## Domain layer
+
+Located in `lib/`.
+
+This layer contains:
+
+- domain types;
+- runtime validation;
+- pure calculations;
+- immutable CRUD operations;
+- date and money helpers.
+
+Domain functions should be deterministic and covered by focused tests.
+
+## Persistence layer
+
+Also located in `lib/`, using dedicated `*-storage.ts` modules.
+
+This layer converts untrusted JSON into validated domain data and writes versioned payloads.
+
+---
+
+# Domain Modules
+
+## Transactions
+
+Primary files:
+
+```text
+lib/types.ts
+lib/transaction-amount.ts
+lib/persisted-transactions.ts
+lib/storage.ts
+lib/transaction-data.ts
+lib/finance.ts
+lib/cashflow.ts
+```
+
+Transactions use canonical `amountMinor` values.
+
+The storage boundary supports legacy reads and versioned writes while preserving the demo-data boundary.
+
+## Budgets
+
+Primary files:
+
+```text
+lib/budget-types.ts
+lib/budget-month.ts
+lib/budget.ts
+lib/budget-storage.ts
+```
+
+A budget is identified by month and category.
+
+Budget calculations derive:
+
+- spent amount;
+- remaining amount;
+- usage percentage;
+- status;
+- monthly totals;
+- unbudgeted spending.
+
+## Accounts
+
+Primary files:
+
+```text
+lib/account-types.ts
+lib/accounts.ts
+lib/account-storage.ts
+```
+
+Accounts contain a balance and an `includedInNetWorth` flag.
+
+Net worth is the sum of included account balances.
+
+## Investments
+
+Primary files:
+
+```text
+lib/investment-types.ts
+lib/investments.ts
+lib/investment-storage.ts
+```
+
+Holdings currently store:
+
+- name and symbol;
+- asset type;
+- quantity;
+- average buy price;
+- current price.
+
+Current calculations cover cost, value and unrealized return. Historical performance and market-price integrations are not yet implemented.
+
+---
+
+# Dashboard Architecture
+
+The dashboard currently combines:
+
+- widget configuration;
+- responsive layouts;
+- storage orchestration;
+- transaction mutation handling;
+- financial calculations;
+- widget rendering;
+- customization interface.
+
+Most of this currently lives in:
+
+```text
+app/page.tsx
+```
+
+This file is intentionally scheduled for decomposition.
+
+Planned boundaries:
+
+```text
+lib/dashboard-config.ts
+hooks/use-dashboard-storage.ts
+components/dashboard/DashboardGrid.tsx
+components/dashboard/DashboardCustomizer.tsx
+components/dashboard/widgets/
+```
+
+The exact split should be introduced incrementally without changing stored widget IDs or layout behavior.
+
+---
+
+# Shared Behavior Planned for Extraction
+
+The following behavior is duplicated across feature pages and should become shared infrastructure:
+
+- hydration detection;
+- storage read/write health mapping;
+- reusable storage notice presentation;
+- guarded persistence after invalid or unsupported reads;
+- common page shells and skeleton patterns.
+
+Potential locations:
+
+```text
+hooks/use-has-hydrated.ts
+lib/storage-health.ts
+components/shared/StorageNotice.tsx
+components/layout/AppPageShell.tsx
+```
+
+Extraction must preserve current behavior and tests.
+
+---
+
+# Testing Strategy
+
+Pure domain logic and persistence boundaries should have focused Vitest coverage.
+
+Current test areas include:
+
+- dates;
+- money and amount conversion;
+- financial summaries;
+- cash flow;
+- transaction persistence and state transitions;
+- budgets;
+- accounts;
+- investments.
+
+UI tests are not yet a major part of the codebase. Until they are introduced, every completed UI feature requires a manual browser check in addition to:
+
+```bash
+npx tsc --noEmit --incremental false
+npm test
+npm run lint
+npm run build
+```
+
+---
+
+# Privacy and Security Boundary
+
+Finovo currently stores financial values in browser-local storage.
+
+The application must never store:
+
+- bank passwords;
+- PIN codes;
+- full payment-card credentials;
+- secret API keys;
+- authentication tokens in ordinary local storage.
+
+Authentication, cloud synchronization and external financial integrations require a separate reviewed security architecture before implementation.
+
+---
+
+# Refactoring Rules
+
+Refactors must:
+
+1. preserve domain behavior;
+2. preserve existing storage keys unless a migration is designed;
+3. preserve supported persisted versions;
+4. keep malformed and unsupported data untouched during initialization;
+5. keep the demo-data boundary intact;
+6. maintain or increase test coverage;
+7. avoid combining unrelated feature changes with structural cleanup.
+
+---
+
+# Current Architectural Priorities
+
+1. Synchronize documentation with the implementation.
+2. Extract shared hydration behavior.
+3. Extract common storage-health helpers and UI.
+4. Reduce repeated route-level persistence logic.
+5. Decompose the dashboard route.
+6. Establish privacy and security documentation.
+7. Continue product development on top of the cleaned foundation.

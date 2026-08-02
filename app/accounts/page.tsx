@@ -8,7 +8,9 @@ import {
 
 import AccountFormModal from "@/components/accounts/AccountFormModal";
 import AccountList from "@/components/accounts/AccountList";
-import AccountsHeader from "@/components/accounts/AccountsHeader";
+import AccountTypeSummary from "@/components/accounts/AccountTypeSummary";
+import AccountsHero from "@/components/accounts/AccountsHero";
+import AssetAllocation from "@/components/accounts/AssetAllocation";
 import Sidebar from "@/components/layout/Sidebar";
 
 import {
@@ -23,9 +25,7 @@ import {
   deleteAccount,
   updateAccount,
 } from "@/lib/accounts";
-import { formatCurrency } from "@/lib/money";
 import type { StorageWriteResult } from "@/lib/storage";
-import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
 
 type AccountStorageHealth =
   | AccountStorageReadStatus
@@ -78,21 +78,30 @@ function getWriteHealth(
   return "write-failed";
 }
 
-function formatMinorCurrency(amountMinor: number) {
-  return formatCurrency(
-    amountMinorToEuroAmount(amountMinor) ?? 0
-  );
-}
-
 function AccountsSkeleton() {
   return (
-    <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-52 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
-        />
-      ))}
+    <div className="space-y-10">
+      <div className="h-[28rem] animate-pulse rounded-[2rem] border border-white/10 bg-zinc-900 xl:h-80" />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-40 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
+          />
+        ))}
+      </div>
+
+      <div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-zinc-900" />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-52 animate-pulse rounded-3xl border border-white/10 bg-zinc-900"
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -113,7 +122,9 @@ export default function AccountsPage() {
       initialResult.status
     );
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] =
+    useState(false);
+
   const [editingAccount, setEditingAccount] =
     useState<Account | null>(null);
 
@@ -202,18 +213,23 @@ export default function AccountsPage() {
       <Sidebar />
 
       <section className="min-w-0 flex-1 overflow-y-auto p-6 md:p-10">
-        <AccountsHeader
-          onAddAccount={openAddForm}
-        />
-
         {!hasHydrated ? (
           <AccountsSkeleton />
         ) : (
           <>
+            <AccountsHero
+              netWorthMinor={netWorthMinor}
+              totalAccounts={accounts.length}
+              includedAccounts={
+                includedAccountCount
+              }
+              onAddAccount={openAddForm}
+            />
+
             {storageNotice && (
               <aside
                 role="status"
-                className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+                className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
               >
                 <p className="text-sm font-semibold text-amber-200">
                   Account storage notice
@@ -225,38 +241,17 @@ export default function AccountsPage() {
               </aside>
             )}
 
-            <section className="mt-8 grid gap-4 sm:grid-cols-2">
-              <article className="rounded-3xl border border-white/10 bg-zinc-900 p-6">
-                <p className="text-sm text-zinc-400">
-                  Net worth
-                </p>
+            <div className="mt-10">
+              <AccountTypeSummary
+                accounts={accounts}
+              />
+            </div>
 
-                <p className="mt-3 text-3xl font-bold tracking-tight">
-                  {formatMinorCurrency(netWorthMinor)}
-                </p>
-
-                <p className="mt-2 text-sm text-zinc-500">
-                  Based on {includedAccountCount} included{" "}
-                  {includedAccountCount === 1
-                    ? "account"
-                    : "accounts"}.
-                </p>
-              </article>
-
-              <article className="rounded-3xl border border-white/10 bg-zinc-900 p-6">
-                <p className="text-sm text-zinc-400">
-                  Total accounts
-                </p>
-
-                <p className="mt-3 text-3xl font-bold tracking-tight">
-                  {accounts.length}
-                </p>
-
-                <p className="mt-2 text-sm text-zinc-500">
-                  Checking, savings, investment and cash.
-                </p>
-              </article>
-            </section>
+            <div className="mt-10">
+              <AssetAllocation
+                accounts={accounts}
+              />
+            </div>
 
             <section
               aria-labelledby="accounts-list-title"

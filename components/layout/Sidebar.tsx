@@ -35,7 +35,7 @@ const navigationItems = [
   {
     label: "Investments",
     icon: TrendingUp,
-    href: null,
+    href: "/investments",
   },
   {
     label: "Goals",
@@ -103,7 +103,10 @@ export default function Sidebar() {
                       : "bg-white/[0.03] group-hover:bg-white/5"
                   }`}
                 >
-                  <Icon size={18} strokeWidth={2} />
+                  <Icon
+                    size={18}
+                    strokeWidth={2}
+                  />
                 </div>
 
                 <span className="flex-1">
