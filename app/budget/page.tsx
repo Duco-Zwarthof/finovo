@@ -12,6 +12,7 @@ import BudgetFormModal from "@/components/budget/BudgetFormModal";
 import BudgetHeader from "@/components/budget/BudgetHeader";
 import BudgetSummary from "@/components/budget/BudgetSummary";
 import Sidebar from "@/components/layout/Sidebar";
+import StorageNotice from "@/components/shared/StorageNotice";
 
 import {
   addBudget,
@@ -336,35 +337,17 @@ export default function BudgetPage() {
               </aside>
             )}
 
-            {budgetStorageNotice && (
-              <aside
-                role="status"
-                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
-              >
-                <p className="text-sm font-semibold text-amber-200">
-                  Budget storage notice
-                </p>
+            <StorageNotice
+              title="Budget storage notice"
+              message={budgetStorageNotice}
+              className="mt-4"
+            />
 
-                <p className="mt-1 text-sm leading-6 text-amber-100/75">
-                  {budgetStorageNotice}
-                </p>
-              </aside>
-            )}
-
-            {transactionStorageNotice && (
-              <aside
-                role="status"
-                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
-              >
-                <p className="text-sm font-semibold text-amber-200">
-                  Transaction storage notice
-                </p>
-
-                <p className="mt-1 text-sm leading-6 text-amber-100/75">
-                  {transactionStorageNotice}
-                </p>
-              </aside>
-            )}
+            <StorageNotice
+              title="Transaction storage notice"
+              message={transactionStorageNotice}
+              className="mt-4"
+            />
 
             <div className="mt-8">
               <BudgetSummary

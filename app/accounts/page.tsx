@@ -13,6 +13,7 @@ import AccountTypeSummary from "@/components/accounts/AccountTypeSummary";
 import AccountsHero from "@/components/accounts/AccountsHero";
 import AssetAllocation from "@/components/accounts/AssetAllocation";
 import Sidebar from "@/components/layout/Sidebar";
+import StorageNotice from "@/components/shared/StorageNotice";
 
 import {
   readStoredAccounts,
@@ -215,20 +216,10 @@ export default function AccountsPage() {
               onAddAccount={openAddForm}
             />
 
-            {storageNotice && (
-              <aside
-                role="status"
-                className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
-              >
-                <p className="text-sm font-semibold text-amber-200">
-                  Account storage notice
-                </p>
-
-                <p className="mt-1 text-sm leading-6 text-amber-100/75">
-                  {storageNotice}
-                </p>
-              </aside>
-            )}
+            <StorageNotice
+              title="Account storage notice"
+              message={storageNotice}
+            />
 
             <div className="mt-10">
               <AccountTypeSummary
