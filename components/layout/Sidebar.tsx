@@ -23,6 +23,11 @@ const navigationItems = [
     href: "/",
   },
   {
+    label: "Net Worth",
+    icon: ChartNoAxesCombined,
+    href: "/net-worth",
+  },
+  {
     label: "Accounts",
     icon: Landmark,
     href: "/accounts",
