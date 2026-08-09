@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  CalendarClock,
+  CalendarRange,
   ChartNoAxesCombined,
   ChevronRight,
   Landmark,
@@ -46,6 +48,16 @@ const navigationItems = [
     label: "Goals",
     icon: Target,
     href: "/goals",
+  },
+  {
+    label: "Recurring",
+    icon: CalendarClock,
+    href: "/recurring",
+  },
+  {
+    label: "Forecast",
+    icon: CalendarRange,
+    href: "/forecast",
   },
   {
     label: "Settings",
