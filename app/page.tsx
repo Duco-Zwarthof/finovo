@@ -24,9 +24,12 @@ import GoalOverview from "@/components/dashboard/GoalOverview";
 import CashflowChart from "@/components/dashboard/CashflowChart";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import DashboardCustomizer from "@/components/dashboard/DashboardCustomizer";
+import DashboardOverviewHero from "@/components/dashboard/DashboardOverviewHero";
+import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import ExpandedStatCard from "@/components/dashboard/ExpandedStatCard";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import SmartInsightsOverview from "@/components/dashboard/SmartInsightsOverview";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -38,6 +41,14 @@ import { formatBudgetMonth } from "@/lib/budget-month";
 import { readStoredBudgets } from "@/lib/budget-storage";
 import { readStoredGoals } from "@/lib/goal-storage";
 import { readStoredAccounts } from "@/lib/account-storage";
+import { calculateCashflowForecast } from "@/lib/cashflow-forecast";
+import { calculateFinancialHealth } from "@/lib/financial-health";
+import { readStoredInvestments } from "@/lib/investment-storage";
+import { calculateFinancialOverview } from "@/lib/net-worth";
+import { calculateNetWorthHistorySummary } from "@/lib/net-worth-history";
+import { readStoredNetWorthHistory } from "@/lib/net-worth-history-storage";
+import { readStoredRecurringTransactions } from "@/lib/recurring-transaction-storage";
+import { generateSmartFinancialInsights } from "@/lib/smart-insights";
 import { calculateNetWorthMinor } from "@/lib/accounts";
 import { formatCurrency } from "@/lib/money";
 import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
@@ -84,6 +95,19 @@ type WidgetSize = {
   height: number;
 };
 
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export default function Home() {
   const router = useRouter();
 
@@ -104,6 +128,24 @@ export default function Home() {
   );
 
   const goals = initialGoals.value;
+
+  const [initialInvestments] = useState(() =>
+    readStoredInvestments([])
+  );
+
+  const investments = initialInvestments.value;
+
+  const [initialRecurring] = useState(() =>
+    readStoredRecurringTransactions([])
+  );
+
+  const recurringItems = initialRecurring.value;
+
+  const [initialNetWorthHistory] = useState(() =>
+    readStoredNetWorthHistory([])
+  );
+
+  const netWorthHistory = initialNetWorthHistory.value;
 
   const [initialTransactions] = useState(() =>
     readStoredTransactions([])
@@ -211,6 +253,59 @@ export default function Home() {
     goals.find((goal) => goal.status === "active") ??
     goals[0] ??
     null;
+
+  const financialOverview = useMemo(
+    () =>
+      calculateFinancialOverview(
+        accounts,
+        investments,
+        goals,
+        transactions
+      ),
+    [accounts, investments, goals, transactions]
+  );
+
+  const financialHealth = useMemo(
+    () => calculateFinancialHealth(financialOverview),
+    [financialOverview]
+  );
+
+  const netWorthHistorySummary = useMemo(
+    () => calculateNetWorthHistorySummary(netWorthHistory),
+    [netWorthHistory]
+  );
+
+  const forecastStartDate = useMemo(
+    () => formatLocalDate(new Date()),
+    []
+  );
+
+  const forecastEndDate = useMemo(
+    () => formatLocalDate(addDays(new Date(), 30)),
+    []
+  );
+
+  const cashflowForecast = useMemo(
+    () =>
+      calculateCashflowForecast(
+        accounts,
+        recurringItems,
+        forecastStartDate,
+        forecastEndDate
+      ),
+    [accounts, recurringItems, forecastStartDate, forecastEndDate]
+  );
+
+  const smartInsights = useMemo(
+    () =>
+      generateSmartFinancialInsights(
+        financialOverview,
+        financialHealth,
+        netWorthHistorySummary,
+        cashflowForecast
+      ),
+    [financialOverview, financialHealth, netWorthHistorySummary, cashflowForecast]
+  );
 
   const storageNotice = getDashboardStorageNotice(storageHealth);
 
@@ -599,7 +694,25 @@ export default function Home() {
           }
         />
 
-        <div className="-mt-4 mb-6 flex flex-wrap items-center justify-end gap-3">
+        {mounted && (
+          <div className="mb-8">
+            <DashboardOverviewHero
+              netWorthMinor={netWorthMinor}
+              monthlySurplusMinor={
+                monthlySurplusMinor
+              }
+              financialHealthScore={
+                financialHealth.score
+              }
+              forecastEndingBalanceMinor={
+                cashflowForecast.endingBalanceMinor
+              }
+              forecastDays={30}
+            />
+          </div>
+        )}
+
+        <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
           <button
             type="button"
             onClick={() =>
@@ -679,7 +792,32 @@ export default function Home() {
           </div>
         )}
 
-        <DashboardGrid
+        {mounted && (
+          <section className="mb-10">
+            <DashboardSectionHeader
+              eyebrow="Intelligence"
+              title="Your financial signals"
+              description="Finovo combines your cash flow, forecast, goals and financial health to surface the items that matter most."
+            />
+
+            <div className="mt-5">
+              <SmartInsightsOverview
+                insights={smartInsights}
+                maxItems={4}
+              />
+            </div>
+          </section>
+        )}
+
+        <section>
+          <DashboardSectionHeader
+            eyebrow="Workspace"
+            title="Your dashboard"
+            description="Arrange and resize the widgets below to match the way you manage your finances."
+          />
+
+          <div className="mt-5">
+            <DashboardGrid
           mounted={mounted}
           isEditMode={isEditMode}
           visibleWidgetIds={visibleWidgetIds}
@@ -689,7 +827,9 @@ export default function Home() {
           }
           onLayoutChange={handleLayoutChange}
           renderWidget={renderWidget}
-        />
+            />
+          </div>
+        </section>
       </section>
 
       {editingTransaction && (
