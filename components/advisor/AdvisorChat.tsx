@@ -12,14 +12,10 @@ import {
   UserRound,
 } from "lucide-react";
 
-import type {
-  AdvisorContext,
-  AdvisorDraftAnswer,
-} from "@/lib/advisor-types";
-import {
-  createAdvisorDraftAnswer,
-  createAdvisorQuestion,
-} from "@/lib/advisor";
+import type { AdvisorContext } from "@/lib/advisor-types";
+import { createAdvisorQuestion } from "@/lib/advisor";
+import type { LocalAdvisorAnswer } from "@/lib/smart-advisor-local-types";
+import { answerLocalAdvisorQuestion } from "@/lib/smart-advisor-local";
 
 type AdvisorChatProps = {
   context: AdvisorContext;
@@ -34,15 +30,24 @@ type ChatEntry =
   | {
       id: string;
       role: "advisor";
-      answer: AdvisorDraftAnswer;
+      answer: LocalAdvisorAnswer;
     };
 
 const suggestedQuestions = [
   "Can I afford a €2,000 holiday?",
-  "Should I invest more each month?",
+  "What if I invest €250 per month extra?",
   "How can I make faster progress toward my savings goal?",
   "How healthy is my current cash flow?",
 ] as const;
+
+const toneClasses = {
+  positive:
+    "border-emerald-500/20 bg-emerald-500/[0.04]",
+  caution:
+    "border-amber-500/20 bg-amber-500/[0.04]",
+  neutral:
+    "border-blue-500/20 bg-blue-500/[0.04]",
+} as const;
 
 export default function AdvisorChat({
   context,
@@ -64,7 +69,9 @@ export default function AdvisorChat({
     [hasConversation]
   );
 
-  function askQuestion(rawText: string) {
+  function askQuestion(
+    rawText: string
+  ) {
     const trimmed = rawText.trim();
 
     if (!trimmed) {
@@ -81,8 +88,8 @@ export default function AdvisorChat({
     }
 
     const answer =
-      createAdvisorDraftAnswer(
-        parsedQuestion,
+      answerLocalAdvisorQuestion(
+        parsedQuestion.text,
         context
       );
 
@@ -115,7 +122,7 @@ export default function AdvisorChat({
       <div className="border-b border-white/10 px-6 py-6 sm:px-8">
         <div className="flex items-center gap-2 text-sm font-semibold text-blue-400">
           <Sparkles size={17} />
-          <span>AI Financial Advisor</span>
+          <span>Smart Financial Advisor</span>
         </div>
 
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -123,8 +130,8 @@ export default function AdvisorChat({
         </h1>
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-          This first advisor version answers locally from the financial
-          context already stored in Finovo. No external AI service is used yet.
+          Finovo answers locally using your recorded cash flow, forecast,
+          liquidity, goals and financial health. No paid AI API is required.
         </p>
       </div>
 
@@ -140,8 +147,8 @@ export default function AdvisorChat({
             </h2>
 
             <p className="mt-2 max-w-lg text-sm leading-6 text-zinc-500">
-              Finovo will use your liquidity, cash flow, forecast,
-              financial health and goal progress to structure the answer.
+              Important balances and forecasts are calculated by
+              Finovo&apos;s own financial engines instead of an external AI model.
             </p>
 
             <div className="mt-7 grid w-full max-w-3xl gap-3 sm:grid-cols-2">
@@ -193,7 +200,13 @@ export default function AdvisorChat({
                   key={entry.id}
                   className="flex justify-start"
                 >
-                  <article className="max-w-3xl rounded-2xl rounded-bl-md border border-white/10 bg-zinc-950/70 px-5 py-5">
+                  <article
+                    className={`max-w-3xl rounded-2xl rounded-bl-md border px-5 py-5 ${
+                      toneClasses[
+                        entry.answer.tone
+                      ]
+                    }`}
+                  >
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
                       <Bot size={15} />
                       Finovo Advisor
@@ -206,7 +219,7 @@ export default function AdvisorChat({
                       }
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
                       {
                         entry.answer
                           .summary
@@ -218,13 +231,29 @@ export default function AdvisorChat({
                         (point) => (
                           <div
                             key={point}
-                            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-300"
+                            className="rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5 text-sm text-zinc-300"
                           >
                             {point}
                           </div>
                         )
                       )}
                     </div>
+
+                    {entry.answer
+                      .recommendation && (
+                      <div className="mt-5 rounded-xl border border-blue-500/15 bg-blue-500/[0.05] px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
+                          Finovo suggestion
+                        </p>
+
+                        <p className="mt-2 text-sm leading-6 text-zinc-300">
+                          {
+                            entry.answer
+                              .recommendation
+                          }
+                        </p>
+                      </div>
+                    )}
 
                     <p className="mt-5 text-xs leading-5 text-zinc-600">
                       {
@@ -258,10 +287,13 @@ export default function AdvisorChat({
                 !event.shiftKey
               ) {
                 event.preventDefault();
-                askQuestion(question);
+                askQuestion(
+                  question
+                );
               }
             }}
             rows={1}
+            maxLength={2_000}
             placeholder={
               questionPlaceholder
             }
@@ -280,9 +312,15 @@ export default function AdvisorChat({
           </button>
         </div>
 
-        <p className="mt-2 px-1 text-xs text-zinc-600">
-          Press Enter to send. Shift + Enter adds a new line.
-        </p>
+        <div className="mt-2 flex items-center justify-between gap-3 px-1">
+          <p className="text-xs text-zinc-600">
+            Press Enter to send. Shift + Enter adds a new line.
+          </p>
+
+          <p className="text-xs text-zinc-700">
+            {question.length}/2000
+          </p>
+        </div>
       </form>
     </section>
   );
