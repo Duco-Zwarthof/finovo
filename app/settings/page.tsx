@@ -6,7 +6,9 @@ import {
 import Sidebar from "@/components/layout/Sidebar";
 import DataExportCard from "@/components/settings/DataExportCard";
 import DataImportCard from "@/components/settings/DataImportCard";
+import DeleteLocalDataCard from "@/components/settings/DeleteLocalDataCard";
 import LocalSnapshotsCard from "@/components/settings/LocalSnapshotsCard";
+import PrivacyStatusCard from "@/components/settings/PrivacyStatusCard";
 
 export default function SettingsPage() {
   return (
@@ -32,6 +34,28 @@ export default function SettingsPage() {
         </header>
 
         <section
+          aria-labelledby="privacy-settings-title"
+          className="mt-10"
+        >
+          <div className="mb-4">
+            <h2
+              id="privacy-settings-title"
+              className="text-lg font-semibold text-white"
+            >
+              Privacy
+            </h2>
+
+            <p className="mt-1 text-sm text-zinc-500">
+              Understand where your
+              Finovo data currently
+              lives.
+            </p>
+          </div>
+
+          <PrivacyStatusCard />
+        </section>
+
+        <section
           aria-labelledby="data-settings-title"
           className="mt-10"
         >
@@ -50,10 +74,8 @@ export default function SettingsPage() {
 
               <p className="mt-1 text-sm text-zinc-500">
                 Automatic restore
-                points, backup and
-                restore controls for
-                browser-local financial
-                information.
+                points, backups and
+                local data controls.
               </p>
             </div>
           </div>
@@ -62,6 +84,7 @@ export default function SettingsPage() {
             <LocalSnapshotsCard />
             <DataExportCard />
             <DataImportCard />
+            <DeleteLocalDataCard />
           </div>
         </section>
       </section>
