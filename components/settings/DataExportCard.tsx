@@ -1,10 +1,14 @@
 "use client";
 
 import {
+  CheckCircle2,
   Download,
   HardDriveDownload,
   ShieldCheck,
 } from "lucide-react";
+import {
+  useState,
+} from "react";
 
 import {
   createFinovoBackupFilename,
@@ -13,44 +17,59 @@ import {
 } from "@/lib/local-backup";
 
 export default function DataExportCard() {
+  const [message, setMessage] =
+    useState<string | null>(null);
+
   function handleExport() {
-    const backup =
-      createFinovoLocalBackup(
-        window.localStorage
+    try {
+      const backup =
+        createFinovoLocalBackup(
+          window.localStorage
+        );
+
+      const serialized =
+        serializeFinovoLocalBackup(
+          backup
+        );
+
+      const blob = new Blob(
+        [serialized],
+        {
+          type:
+            "application/json;charset=utf-8",
+        }
       );
 
-    const serialized =
-      serializeFinovoLocalBackup(
-        backup
+      const url =
+        URL.createObjectURL(blob);
+
+      const anchor =
+        document.createElement("a");
+
+      const filename =
+        createFinovoBackupFilename(
+          backup.exportedAt
+        );
+
+      anchor.href = url;
+      anchor.download = filename;
+
+      document.body.appendChild(
+        anchor
       );
+      anchor.click();
+      anchor.remove();
 
-    const blob = new Blob(
-      [serialized],
-      {
-        type:
-          "application/json;charset=utf-8",
-      }
-    );
+      URL.revokeObjectURL(url);
 
-    const url =
-      URL.createObjectURL(blob);
-
-    const anchor =
-      document.createElement("a");
-
-    anchor.href = url;
-    anchor.download =
-      createFinovoBackupFilename(
-        backup.exportedAt
+      setMessage(
+        `Backup downloaded as ${filename}.`
       );
-
-    document.body.appendChild(
-      anchor
-    );
-    anchor.click();
-    anchor.remove();
-
-    URL.revokeObjectURL(url);
+    } catch {
+      setMessage(
+        "Finovo could not create the backup."
+      );
+    }
   }
 
   return (
@@ -117,6 +136,19 @@ export default function DataExportCard() {
         <Download size={17} />
         Download backup
       </button>
+
+      {message && (
+        <div
+          role="status"
+          className="mt-4 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-zinc-300"
+        >
+          <CheckCircle2
+            size={17}
+            className="mt-1 shrink-0 text-emerald-400"
+          />
+          {message}
+        </div>
+      )}
     </article>
   );
 }
