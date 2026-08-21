@@ -6,6 +6,7 @@ import {
 import Sidebar from "@/components/layout/Sidebar";
 import DataExportCard from "@/components/settings/DataExportCard";
 import DataImportCard from "@/components/settings/DataImportCard";
+import LocalSnapshotsCard from "@/components/settings/LocalSnapshotsCard";
 
 export default function SettingsPage() {
   return (
@@ -48,7 +49,9 @@ export default function SettingsPage() {
               </h2>
 
               <p className="mt-1 text-sm text-zinc-500">
-                Backup and restore
+                Automatic restore
+                points, backup and
+                restore controls for
                 browser-local financial
                 information.
               </p>
@@ -56,6 +59,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-5">
+            <LocalSnapshotsCard />
             <DataExportCard />
             <DataImportCard />
           </div>
