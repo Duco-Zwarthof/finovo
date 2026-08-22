@@ -123,6 +123,75 @@ describe("scenario planner", () => {
     ).toBe(50_000);
   });
 
+  it("compounds an annual investment return monthly", () => {
+    const projection =
+      calculateScenarioProjection(
+        0,
+        1_000_000,
+        [],
+        12,
+        {
+          annualInvestmentReturnPercent:
+            10,
+        }
+      );
+
+    expect(
+      projection.projectedInvestmentsMinor
+    ).toBeCloseTo(
+      1_100_000,
+      -2
+    );
+  });
+
+  it("compounds new monthly investment contributions", () => {
+    const projection =
+      calculateScenarioProjection(
+        1_200_000,
+        0,
+        [
+          {
+            id: "invest",
+            type: "monthly-investment",
+            label: "Invest monthly",
+            amountMinor: 100_000,
+          },
+        ],
+        12,
+        {
+          annualInvestmentReturnPercent:
+            10,
+        }
+      );
+
+    expect(
+      projection.projectedInvestmentsMinor
+    ).toBeGreaterThan(
+      1_200_000
+    );
+
+    expect(
+      projection.projectedCashMinor
+    ).toBe(0);
+  });
+
+  it("rejects invalid annual return assumptions", () => {
+    expect(() =>
+      calculateScenarioProjection(
+        0,
+        0,
+        [],
+        12,
+        {
+          annualInvestmentReturnPercent:
+            101,
+        }
+      )
+    ).toThrow(
+      "Annual investment return must be between 0 and 100 percent"
+    );
+  });
+
   it("rejects negative adjustment amounts", () => {
     expect(() =>
       calculateScenarioMonthlyChanges([

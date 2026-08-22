@@ -4,6 +4,10 @@ import type {
   ScenarioProjectionPoint,
 } from "./scenario-planner-types";
 
+export type ScenarioProjectionOptions = {
+  annualInvestmentReturnPercent?: number;
+};
+
 function assertSafeInteger(
   value: number,
   message: string
@@ -32,6 +36,55 @@ function subtractMinorUnits(
   second: number
 ): number {
   const result = first - second;
+
+  assertSafeInteger(
+    result,
+    "Scenario calculation exceeds the safe minor-unit range"
+  );
+
+  return result;
+}
+
+function calculateMonthlyInvestmentReturnRate(
+  annualReturnPercent: number
+) {
+  if (
+    !Number.isFinite(
+      annualReturnPercent
+    ) ||
+    annualReturnPercent < 0 ||
+    annualReturnPercent > 100
+  ) {
+    throw new RangeError(
+      "Annual investment return must be between 0 and 100 percent"
+    );
+  }
+
+  if (annualReturnPercent === 0) {
+    return 0;
+  }
+
+  return (
+    Math.pow(
+      1 +
+        annualReturnPercent / 100,
+      1 / 12
+    ) - 1
+  );
+}
+
+function applyMonthlyInvestmentReturn(
+  amountMinor: number,
+  monthlyReturnRate: number
+) {
+  if (monthlyReturnRate === 0) {
+    return amountMinor;
+  }
+
+  const result = Math.round(
+    amountMinor *
+      (1 + monthlyReturnRate)
+  );
 
   assertSafeInteger(
     result,
@@ -100,7 +153,8 @@ export function calculateScenarioProjection(
   startingCashMinor: number,
   startingInvestmentsMinor: number,
   adjustments: readonly ScenarioAdjustment[],
-  months: number
+  months: number,
+  options: ScenarioProjectionOptions = {}
 ): ScenarioProjection {
   assertSafeInteger(
     startingCashMinor,
@@ -120,6 +174,12 @@ export function calculateScenarioProjection(
       "Scenario months must be between 1 and 600"
     );
   }
+
+  const monthlyInvestmentReturnRate =
+    calculateMonthlyInvestmentReturnRate(
+      options.annualInvestmentReturnPercent ??
+        0
+    );
 
   const {
     monthlyCashChangeMinor,
@@ -160,6 +220,12 @@ export function calculateScenarioProjection(
       projectedInvestmentsMinor,
       monthlyInvestmentContributionMinor
     );
+
+    projectedInvestmentsMinor =
+      applyMonthlyInvestmentReturn(
+        projectedInvestmentsMinor,
+        monthlyInvestmentReturnRate
+      );
 
     points.push({
       month,
