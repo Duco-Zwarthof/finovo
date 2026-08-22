@@ -1,5 +1,19 @@
 import type { FinancialInsight } from "./insight-types";
 
+export type AdvisorScenarioContext = {
+  years: number;
+  extraIncomeMinor: number;
+  extraExpensesMinor: number;
+  extraInvestingMinor: number;
+  bearReturnPercent: number;
+  baseReturnPercent: number;
+  bullReturnPercent: number;
+  bearEndingNetWorthMinor: number;
+  baseEndingNetWorthMinor: number;
+  bullEndingNetWorthMinor: number;
+  lowestProjectedCashMinor: number;
+};
+
 export type AdvisorContext = {
   netWorthMinor: number;
   liquidAssetsMinor: number;
@@ -13,6 +27,7 @@ export type AdvisorContext = {
   forecastLowestBalanceDate: string;
   goalProgressPercentage: number | null;
   topInsights: FinancialInsight[];
+  scenario?: AdvisorScenarioContext | null;
 };
 
 export type AdvisorQuestionCategory =

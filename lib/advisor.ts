@@ -5,6 +5,7 @@ import type { FinancialOverview } from "./net-worth-types";
 import type {
   AdvisorContext,
   AdvisorDraftAnswer,
+  AdvisorScenarioContext,
   AdvisorQuestion,
   AdvisorQuestionCategory,
 } from "./advisor-types";
@@ -65,7 +66,8 @@ export function createAdvisorContext(
   overview: FinancialOverview,
   health: FinancialHealthResult,
   forecast: CashflowForecast,
-  insights: readonly FinancialInsight[]
+  insights: readonly FinancialInsight[],
+  scenario: AdvisorScenarioContext | null = null
 ): AdvisorContext {
   const lowestPoint = forecast.points.reduce(
     (lowest, point) =>
@@ -101,6 +103,7 @@ export function createAdvisorContext(
     goalProgressPercentage:
       overview.goalProgressPercentage,
     topInsights: insights.slice(0, 5),
+    scenario,
   };
 }
 

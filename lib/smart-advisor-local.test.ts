@@ -104,4 +104,40 @@ describe("local smart advisor", () => {
       ).category
     ).toBe("general");
   });
+
+  it("includes saved scenario outcomes in investing answers", () => {
+    const answer =
+      answerLocalAdvisorQuestion(
+        "What if I invest €250 per month extra?",
+        {
+          ...context,
+          scenario: {
+            years: 5,
+            extraIncomeMinor: 0,
+            extraExpensesMinor: 0,
+            extraInvestingMinor: 25_000,
+            bearReturnPercent: 2,
+            baseReturnPercent: 6,
+            bullReturnPercent: 9,
+            bearEndingNetWorthMinor:
+              2_000_000,
+            baseEndingNetWorthMinor:
+              2_500_000,
+            bullEndingNetWorthMinor:
+              3_000_000,
+            lowestProjectedCashMinor:
+              500_000,
+          },
+        }
+      );
+
+    expect(
+      answer.supportingPoints.some(
+        (point) =>
+          point.includes(
+            "Saved 5-year scenario"
+          )
+      )
+    ).toBe(true);
+  });
 });

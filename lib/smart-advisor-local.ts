@@ -9,6 +9,23 @@ import { amountMinorToEuroAmount } from "./transaction-amount";
 
 const MINIMUM_BUFFER_MONTHS = 3;
 
+function createScenarioSupportingPoint(
+  context: AdvisorContext
+): string | null {
+  if (!context.scenario) {
+    return null;
+  }
+
+  return `Saved ${context.scenario.years}-year scenario: bear ${formatMinorCurrency(
+    context.scenario.bearEndingNetWorthMinor
+  )}, base ${formatMinorCurrency(
+    context.scenario.baseEndingNetWorthMinor
+  )}, bull ${formatMinorCurrency(
+    context.scenario.bullEndingNetWorthMinor
+  )} ending net worth.`;
+}
+
+
 function formatMinorCurrency(
   amountMinor: number
 ): string {
@@ -288,9 +305,20 @@ function createInvestingAnswer(
       `Current investment assets: ${formatMinorCurrency(
         context.investmentAssetsMinor
       )}.`,
+      ...(createScenarioSupportingPoint(
+        context
+      )
+        ? [
+            createScenarioSupportingPoint(
+              context
+            ) as string,
+          ]
+        : []),
     ],
     recommendation: sustainable
-      ? "Use the Scenario Planner to test the long-term effect with your own time horizon and return assumption."
+      ? context.scenario
+        ? `Your saved Scenario Planner assumptions use ${context.scenario.bearReturnPercent}% / ${context.scenario.baseReturnPercent}% / ${context.scenario.bullReturnPercent}% bear-base-bull returns over ${context.scenario.years} years. Review the full range before changing your contribution.`
+        : "Use the Scenario Planner to test the long-term effect with your own time horizon and return assumption."
       : "A smaller monthly contribution would fit your current cash flow more comfortably.",
     disclaimer:
       "This calculation models contributions only and does not predict or guarantee investment returns.",
@@ -329,6 +357,15 @@ function createSavingAnswer(
       `Lowest forecast balance: ${formatMinorCurrency(
         context.forecastLowestBalanceMinor
       )}.`,
+      ...(createScenarioSupportingPoint(
+        context
+      )
+        ? [
+            createScenarioSupportingPoint(
+              context
+            ) as string,
+          ]
+        : []),
     ],
     recommendation: hasPositiveSurplus
       ? "Use Goals and the Scenario Planner to test a specific monthly contribution before changing your plan."
@@ -368,6 +405,15 @@ function createCashflowAnswer(
         context.forecastLowestBalanceMinor
       )} on ${context.forecastLowestBalanceDate}.`,
       `Financial Health Score: ${context.financialHealthScore}/100.`,
+      ...(createScenarioSupportingPoint(
+        context
+      )
+        ? [
+            createScenarioSupportingPoint(
+              context
+            ) as string,
+          ]
+        : []),
     ],
     recommendation: healthy
       ? "Review recurring expenses and budget categories if you want to increase your monthly surplus further."

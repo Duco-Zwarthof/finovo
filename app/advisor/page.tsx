@@ -16,6 +16,9 @@ import { readStoredAccounts } from "@/lib/account-storage";
 import {
   createAdvisorContext,
 } from "@/lib/advisor";
+import {
+  calculateAdvisorScenarioContext,
+} from "@/lib/advisor-scenario";
 import { calculateCashflowForecast } from "@/lib/cashflow-forecast";
 import { calculateFinancialHealth } from "@/lib/financial-health";
 import { readStoredGoals } from "@/lib/goal-storage";
@@ -29,6 +32,9 @@ import {
 import { calculateFinancialOverview } from "@/lib/net-worth";
 import { readStoredRecurringTransactions } from "@/lib/recurring-transaction-storage";
 import { generateSmartFinancialInsights } from "@/lib/smart-insights";
+import {
+  readScenarioSettings,
+} from "@/lib/scenario-settings";
 import { readStoredTransactions } from "@/lib/storage";
 import {
   createTransactionDataState,
@@ -133,6 +139,11 @@ export default function AdvisorPage() {
       readStoredNetWorthHistory([])
     );
 
+  const [scenarioSettings] =
+    useState(() =>
+      readScenarioSettings()
+    );
+
   const [transactionData] =
     useState(() =>
       createTransactionDataState(
@@ -226,6 +237,21 @@ export default function AdvisorPage() {
       ]
     );
 
+  const advisorScenario =
+    useMemo(
+      () =>
+        calculateAdvisorScenarioContext(
+          overview.liquidAssetsMinor,
+          overview.investmentAssetsMinor,
+          scenarioSettings
+        ),
+      [
+        overview.liquidAssetsMinor,
+        overview.investmentAssetsMinor,
+        scenarioSettings,
+      ]
+    );
+
   const advisorContext =
     useMemo(
       () =>
@@ -233,13 +259,15 @@ export default function AdvisorPage() {
           overview,
           financialHealth,
           forecast,
-          smartInsights
+          smartInsights,
+          advisorScenario
         ),
       [
         overview,
         financialHealth,
         forecast,
         smartInsights,
+        advisorScenario,
       ]
     );
 

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -8,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Banknote,
+  TrendingDown,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
@@ -28,21 +30,22 @@ import type {
   ScenarioAdjustment,
 } from "@/lib/scenario-planner-types";
 import {
+  readScenarioSettings,
+  writeScenarioSettings,
+} from "@/lib/scenario-settings";
+import {
   formatCompactCurrency,
   formatCurrency,
 } from "@/lib/money";
 
 const horizons = [1, 3, 5, 10] as const;
-const returnPresets = [0, 4, 7, 10] as const;
 
 type ScenarioPlannerCardProps = {
   startingCashMinor: number;
   startingInvestmentsMinor: number;
 };
 
-function euroToMinor(
-  value: number
-) {
+function euroToMinor(value: number) {
   if (!Number.isFinite(value)) {
     return 0;
   }
@@ -53,9 +56,7 @@ function euroToMinor(
   );
 }
 
-function formatMinor(
-  valueMinor: number
-) {
+function formatMinor(valueMinor: number) {
   return formatCurrency(
     valueMinor / 100
   );
@@ -73,16 +74,62 @@ export default function ScenarioPlannerCard({
   startingCashMinor,
   startingInvestmentsMinor,
 }: ScenarioPlannerCardProps) {
+  const [savedSettings] =
+    useState(() =>
+      readScenarioSettings()
+    );
+
   const [extraIncome, setExtraIncome] =
-    useState(0);
+    useState(
+      savedSettings.extraIncomeEuro
+    );
   const [extraExpenses, setExtraExpenses] =
-    useState(0);
+    useState(
+      savedSettings.extraExpensesEuro
+    );
   const [extraInvesting, setExtraInvesting] =
-    useState(0);
-  const [annualReturn, setAnnualReturn] =
-    useState<(typeof returnPresets)[number]>(0);
+    useState(
+      savedSettings.extraInvestingEuro
+    );
   const [years, setYears] =
-    useState<(typeof horizons)[number]>(5);
+    useState<(typeof horizons)[number]>(
+      savedSettings.years
+    );
+
+  const [bearReturn, setBearReturn] =
+    useState(
+      savedSettings.bearReturn
+    );
+  const [baseReturn, setBaseReturn] =
+    useState(
+      savedSettings.baseReturn
+    );
+  const [bullReturn, setBullReturn] =
+    useState(
+      savedSettings.bullReturn
+    );
+
+  useEffect(() => {
+    writeScenarioSettings({
+      extraIncomeEuro: extraIncome,
+      extraExpensesEuro:
+        extraExpenses,
+      extraInvestingEuro:
+        extraInvesting,
+      years,
+      bearReturn,
+      baseReturn,
+      bullReturn,
+    });
+  }, [
+    extraIncome,
+    extraExpenses,
+    extraInvesting,
+    years,
+    bearReturn,
+    baseReturn,
+    bullReturn,
+  ]);
 
   const adjustments =
     useMemo<ScenarioAdjustment[]>(
@@ -118,7 +165,7 @@ export default function ScenarioPlannerCard({
 
   const months = years * 12;
 
-  const projection = useMemo(
+  const bearProjection = useMemo(
     () =>
       calculateScenarioProjection(
         startingCashMinor,
@@ -127,7 +174,7 @@ export default function ScenarioPlannerCard({
         months,
         {
           annualInvestmentReturnPercent:
-            annualReturn,
+            bearReturn,
         }
       ),
     [
@@ -135,7 +182,49 @@ export default function ScenarioPlannerCard({
       startingInvestmentsMinor,
       adjustments,
       months,
-      annualReturn,
+      bearReturn,
+    ]
+  );
+
+  const baseProjection = useMemo(
+    () =>
+      calculateScenarioProjection(
+        startingCashMinor,
+        startingInvestmentsMinor,
+        adjustments,
+        months,
+        {
+          annualInvestmentReturnPercent:
+            baseReturn,
+        }
+      ),
+    [
+      startingCashMinor,
+      startingInvestmentsMinor,
+      adjustments,
+      months,
+      baseReturn,
+    ]
+  );
+
+  const bullProjection = useMemo(
+    () =>
+      calculateScenarioProjection(
+        startingCashMinor,
+        startingInvestmentsMinor,
+        adjustments,
+        months,
+        {
+          annualInvestmentReturnPercent:
+            bullReturn,
+        }
+      ),
+    [
+      startingCashMinor,
+      startingInvestmentsMinor,
+      adjustments,
+      months,
+      bullReturn,
     ]
   );
 
@@ -159,48 +248,60 @@ export default function ScenarioPlannerCard({
     startingCashMinor +
     startingInvestmentsMinor;
 
-  const netWorthChangeMinor =
-    projection.projectedNetWorthMinor -
+  const baseNetWorthChangeMinor =
+    baseProjection.projectedNetWorthMinor -
     startingNetWorthMinor;
 
-  const estimatedGrowthMinor =
-    projection.projectedInvestmentsMinor -
+  const baseEstimatedGrowthMinor =
+    baseProjection.projectedInvestmentsMinor -
     zeroReturnProjection.projectedInvestmentsMinor;
 
   const totalExtraInvestmentMinor =
-    projection.monthlyInvestmentContributionMinor *
+    baseProjection.monthlyInvestmentContributionMinor *
     months;
 
   const chartData = useMemo(
     () =>
-      projection.points.map(
-        (point) => ({
+      baseProjection.points.map(
+        (point, index) => ({
           month: point.month,
-          cash:
-            point.projectedCashMinor,
-          investments:
-            point.projectedInvestmentsMinor,
-          netWorth:
+          bear:
+            bearProjection.points[index]
+              ?.projectedNetWorthMinor ??
+            point.projectedNetWorthMinor,
+          base:
+            point.projectedNetWorthMinor,
+          bull:
+            bullProjection.points[index]
+              ?.projectedNetWorthMinor ??
             point.projectedNetWorthMinor,
         })
       ),
-    [projection.points]
+    [
+      baseProjection.points,
+      bearProjection.points,
+      bullProjection.points,
+    ]
   );
 
   const lowestCashMinor =
     useMemo(
       () =>
         Math.min(
-          ...projection.points.map(
+          ...baseProjection.points.map(
             (point) =>
               point.projectedCashMinor
           )
         ),
-      [projection.points]
+      [baseProjection.points]
     );
 
   const hasNegativeCash =
     lowestCashMinor < 0;
+
+  const scenarioSpreadMinor =
+    bullProjection.projectedNetWorthMinor -
+    bearProjection.projectedNetWorthMinor;
 
   return (
     <section className="space-y-6">
@@ -216,8 +317,8 @@ export default function ScenarioPlannerCard({
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-              Change income, expenses, investing and an assumed annual
-              investment return to explore how your balances could develop.
+              Explore the same plan under bear, base and bull return assumptions
+              instead of relying on one single expected return.
             </p>
           </div>
 
@@ -320,100 +421,217 @@ export default function ScenarioPlannerCard({
           </label>
         </div>
 
-        <div className="mt-7 grid gap-6 lg:grid-cols-2">
-          <div>
-            <p className="mb-3 text-sm font-medium text-zinc-400">
-              Projection horizon
-            </p>
+        <div className="mt-7">
+          <p className="mb-3 text-sm font-medium text-zinc-400">
+            Projection horizon
+          </p>
 
-            <div className="flex flex-wrap gap-2">
-              {horizons.map(
-                (horizon) => {
-                  const isActive =
-                    years === horizon;
+          <div className="flex flex-wrap gap-2">
+            {horizons.map((horizon) => {
+              const isActive =
+                years === horizon;
 
-                  return (
-                    <button
-                      key={horizon}
-                      type="button"
-                      onClick={() =>
-                        setYears(
-                          horizon
-                        )
-                      }
-                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                        isActive
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                          : "border border-white/10 bg-white/[0.02] text-zinc-400 hover:bg-white/[0.05] hover:text-white"
-                      }`}
-                    >
-                      {horizon} year
-                      {horizon > 1
-                        ? "s"
-                        : ""}
-                    </button>
-                  );
-                }
-              )}
-            </div>
+              return (
+                <button
+                  key={horizon}
+                  type="button"
+                  onClick={() =>
+                    setYears(horizon)
+                  }
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                      : "border border-white/10 bg-white/[0.02] text-zinc-400 hover:bg-white/[0.05] hover:text-white"
+                  }`}
+                >
+                  {horizon} year
+                  {horizon > 1
+                    ? "s"
+                    : ""}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-zinc-400">
-                Assumed annual investment return
-              </p>
-
-              <span className="text-xs text-zinc-600">
-                Estimate only
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          <label className="rounded-2xl border border-red-500/15 bg-red-500/[0.03] p-4">
+            <div className="flex items-center gap-2">
+              <TrendingDown
+                size={16}
+                className="text-red-400"
+              />
+              <span className="text-sm font-semibold text-red-300">
+                Bear
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {returnPresets.map(
-                (returnPercent) => {
-                  const isActive =
-                    annualReturn ===
-                    returnPercent;
+            <input
+              min={0}
+              max={100}
+              step="0.5"
+              type="number"
+              value={bearReturn}
+              onChange={(event) =>
+                setBearReturn(
+                  Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      Number(
+                        event.target.value
+                      ) || 0
+                    )
+                  )
+                )
+              }
+              className="mt-3 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-white outline-none transition focus:border-red-500"
+            />
 
-                  return (
-                    <button
-                      key={
-                        returnPercent
-                      }
-                      type="button"
-                      onClick={() =>
-                        setAnnualReturn(
-                          returnPercent
-                        )
-                      }
-                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                        isActive
-                          ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20"
-                          : "border border-white/10 bg-white/[0.02] text-zinc-400 hover:bg-white/[0.05] hover:text-white"
-                      }`}
-                    >
-                      {returnPercent}%
-                    </button>
-                  );
-                }
-              )}
+            <p className="mt-2 text-xs text-zinc-600">
+              % annual return
+            </p>
+          </label>
+
+          <label className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.03] p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp
+                size={16}
+                className="text-blue-400"
+              />
+              <span className="text-sm font-semibold text-blue-300">
+                Base
+              </span>
             </div>
-          </div>
+
+            <input
+              min={0}
+              max={100}
+              step="0.5"
+              type="number"
+              value={baseReturn}
+              onChange={(event) =>
+                setBaseReturn(
+                  Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      Number(
+                        event.target.value
+                      ) || 0
+                    )
+                  )
+                )
+              }
+              className="mt-3 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-white outline-none transition focus:border-blue-500"
+            />
+
+            <p className="mt-2 text-xs text-zinc-600">
+              % annual return
+            </p>
+          </label>
+
+          <label className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.03] p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp
+                size={16}
+                className="text-emerald-400"
+              />
+              <span className="text-sm font-semibold text-emerald-300">
+                Bull
+              </span>
+            </div>
+
+            <input
+              min={0}
+              max={100}
+              step="0.5"
+              type="number"
+              value={bullReturn}
+              onChange={(event) =>
+                setBullReturn(
+                  Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      Number(
+                        event.target.value
+                      ) || 0
+                    )
+                  )
+                )
+              }
+              className="mt-3 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-white outline-none transition focus:border-emerald-500"
+            />
+
+            <p className="mt-2 text-xs text-zinc-600">
+              % annual return
+            </p>
+          </label>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-red-500/15 bg-red-500/[0.03] p-5">
+          <p className="text-xs uppercase tracking-[0.12em] text-red-400">
+            Bear outcome
+          </p>
+
+          <p className="mt-3 text-2xl font-bold text-white">
+            {formatMinor(
+              bearProjection.projectedNetWorthMinor
+            )}
+          </p>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            {bearReturn}% annual return
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-blue-500/20 bg-blue-500/[0.04] p-5">
+          <p className="text-xs uppercase tracking-[0.12em] text-blue-400">
+            Base outcome
+          </p>
+
+          <p className="mt-3 text-2xl font-bold text-white">
+            {formatMinor(
+              baseProjection.projectedNetWorthMinor
+            )}
+          </p>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            {baseReturn}% annual return
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-emerald-500/15 bg-emerald-500/[0.03] p-5">
+          <p className="text-xs uppercase tracking-[0.12em] text-emerald-400">
+            Bull outcome
+          </p>
+
+          <p className="mt-3 text-2xl font-bold text-white">
+            {formatMinor(
+              bullProjection.projectedNetWorthMinor
+            )}
+          </p>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            {bullReturn}% annual return
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-white/10 bg-zinc-900 p-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
             <WalletCards size={18} />
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Ending cash
+            Base ending cash
           </p>
           <p className="mt-2 text-xl font-bold text-white">
             {formatMinor(
-              projection.projectedCashMinor
+              baseProjection.projectedCashMinor
             )}
           </p>
         </div>
@@ -423,11 +641,11 @@ export default function ScenarioPlannerCard({
             <TrendingUp size={18} />
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Ending investments
+            Base investments
           </p>
           <p className="mt-2 text-xl font-bold text-white">
             {formatMinor(
-              projection.projectedInvestmentsMinor
+              baseProjection.projectedInvestmentsMinor
             )}
           </p>
         </div>
@@ -437,50 +655,26 @@ export default function ScenarioPlannerCard({
             <Banknote size={18} />
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Estimated return growth
+            Base return growth
           </p>
           <p className="mt-2 text-xl font-bold text-emerald-400">
             {formatMinor(
-              estimatedGrowthMinor
+              baseEstimatedGrowthMinor
             )}
-          </p>
-          <p className="mt-2 text-xs text-zinc-600">
-            Compared with a 0% return scenario.
           </p>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-zinc-900 p-5">
           <p className="text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Ending net worth
+            Outcome spread
           </p>
           <p className="mt-3 text-xl font-bold text-white">
             {formatMinor(
-              projection.projectedNetWorthMinor
+              scenarioSpreadMinor
             )}
           </p>
           <p className="mt-2 text-xs text-zinc-500">
-            After {years} year
-            {years > 1 ? "s" : ""}
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-white/10 bg-zinc-900 p-5">
-          <p className="text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Net worth change
-          </p>
-          <p
-            className={`mt-3 text-xl font-bold ${
-              netWorthChangeMinor >= 0
-                ? "text-emerald-400"
-                : "text-red-400"
-            }`}
-          >
-            {formatMinor(
-              netWorthChangeMinor
-            )}
-          </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Includes the selected return assumption.
+            Difference between bear and bull.
           </p>
         </div>
       </div>
@@ -488,7 +682,7 @@ export default function ScenarioPlannerCard({
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4">
           <p className="text-xs uppercase tracking-[0.12em] text-zinc-600">
-            Extra contributions over period
+            Extra contributions
           </p>
           <p className="mt-2 text-lg font-semibold text-white">
             {formatMinor(
@@ -497,16 +691,20 @@ export default function ScenarioPlannerCard({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.04] px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-violet-400">
-            Return assumption
+        <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] px-4 py-4">
+          <p className="text-xs uppercase tracking-[0.12em] text-blue-400">
+            Base net worth change
           </p>
-          <p className="mt-2 text-lg font-semibold text-white">
-            {annualReturn}% annually
-          </p>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Compounded monthly for illustration. Actual investment returns
-            are uncertain and can be negative.
+          <p
+            className={`mt-2 text-lg font-semibold ${
+              baseNetWorthChangeMinor >= 0
+                ? "text-emerald-400"
+                : "text-red-400"
+            }`}
+          >
+            {formatMinor(
+              baseNetWorthChangeMinor
+            )}
           </p>
         </div>
       </div>
@@ -517,15 +715,17 @@ export default function ScenarioPlannerCard({
             size={18}
             className="mt-0.5 shrink-0 text-amber-400"
           />
+
           <div>
             <p className="text-sm font-semibold text-amber-200">
-              This scenario runs cash below zero.
+              This plan runs cash below zero.
             </p>
+
             <p className="mt-1 text-sm leading-6 text-amber-100/70">
               The lowest projected cash balance is{" "}
               {formatMinor(
                 lowestCashMinor
-              )}. Consider reducing extra investing or expenses.
+              )}. Return assumptions do not fix a cash-flow shortfall.
             </p>
           </div>
         </div>
@@ -535,12 +735,12 @@ export default function ScenarioPlannerCard({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-xl font-bold text-white">
-              Projected balances
+              Outcome range
             </h2>
 
             <p className="mt-2 text-sm text-zinc-500">
-              Investment balances use the selected annual return assumption;
-              cash does not earn a return in this model.
+              Three net-worth projections using your bear, base and bull
+              assumptions. These are illustrations, not forecasts or guarantees.
             </p>
           </div>
 
@@ -638,8 +838,17 @@ export default function ScenarioPlannerCard({
 
               <Line
                 type="monotone"
-                dataKey="netWorth"
-                name="Net worth"
+                dataKey="bear"
+                name="Bear"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={false}
+              />
+
+              <Line
+                type="monotone"
+                dataKey="base"
+                name="Base"
                 stroke="#3b82f6"
                 strokeWidth={3}
                 dot={false}
@@ -647,18 +856,9 @@ export default function ScenarioPlannerCard({
 
               <Line
                 type="monotone"
-                dataKey="cash"
-                name="Cash"
+                dataKey="bull"
+                name="Bull"
                 stroke="#10b981"
-                strokeWidth={2}
-                dot={false}
-              />
-
-              <Line
-                type="monotone"
-                dataKey="investments"
-                name="Investments"
-                stroke="#8b5cf6"
                 strokeWidth={2}
                 dot={false}
               />
