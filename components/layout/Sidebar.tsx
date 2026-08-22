@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  Bot,
   CalendarClock,
   CalendarRange,
   ChartNoAxesCombined,
   ChevronRight,
+  FlaskConical,
   Landmark,
   LayoutDashboard,
   PiggyBank,
@@ -27,6 +29,8 @@ const navigationItems = [
   { label: "Goals", icon: Target, href: "/goals" },
   { label: "Recurring", icon: CalendarClock, href: "/recurring" },
   { label: "Forecast", icon: CalendarRange, href: "/forecast" },
+  { label: "Scenario", icon: FlaskConical, href: "/scenario" },
+  { label: "Advisor", icon: Bot, href: "/advisor" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ] as const;
 
