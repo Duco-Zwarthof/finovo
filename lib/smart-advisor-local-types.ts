@@ -1,3 +1,5 @@
+import type { AdvisorAction } from "./advisor-recommendations";
+
 export type LocalAdvisorTone =
   | "positive"
   | "caution"
@@ -30,4 +32,5 @@ export type LocalAdvisorAnswer = {
   recommendation: string | null;
   disclaimer: string;
   assessment: LocalAdvisorAssessment;
+  actions: AdvisorAction[];
 };

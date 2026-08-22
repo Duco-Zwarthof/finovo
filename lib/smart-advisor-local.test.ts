@@ -157,4 +157,16 @@ describe("local smart advisor", () => {
         .estimatedMonthlyRoomMinor
     ).toBe(100_000);
   });
+
+  it("adds concrete recommended actions to advisor answers", () => {
+    const answer = answerLocalAdvisorQuestion(
+      "What if I invest €1,250 per month extra?",
+      context
+    );
+
+    expect(answer.actions.length).toBeGreaterThan(0);
+    expect(
+      answer.actions.some((action) => action.id === "reduce-investment")
+    ).toBe(true);
+  });
 });

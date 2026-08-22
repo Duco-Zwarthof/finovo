@@ -9,8 +9,11 @@ import {
   assessMonthlyCommitment,
   assessOneOffPurchase,
 } from "./advisor-assessment";
+import { createAdvisorActions } from "./advisor-recommendations";
 import { formatCurrency } from "./money";
 import { amountMinorToEuroAmount } from "./transaction-amount";
+
+type LocalAdvisorDraftAnswer = Omit<LocalAdvisorAnswer, "actions">;
 
 const MINIMUM_BUFFER_MONTHS = 3;
 
@@ -130,7 +133,7 @@ function parseMoneyAmountMinor(
 function createAffordabilityAnswer(
   question: string,
   context: AdvisorContext
-): LocalAdvisorAnswer {
+): LocalAdvisorDraftAnswer {
   const purchaseMinor =
     parseMoneyAmountMinor(question);
 
@@ -252,7 +255,7 @@ function createAffordabilityAnswer(
 function createInvestingAnswer(
   question: string,
   context: AdvisorContext
-): LocalAdvisorAnswer {
+): LocalAdvisorDraftAnswer {
   const contributionMinor =
     parseMoneyAmountMinor(question);
 
@@ -350,7 +353,7 @@ function createInvestingAnswer(
 
 function createSavingAnswer(
   context: AdvisorContext
-): LocalAdvisorAnswer {
+): LocalAdvisorDraftAnswer {
   const hasPositiveSurplus =
     context.monthlySurplusMinor > 0;
 
@@ -404,7 +407,7 @@ function createSavingAnswer(
 
 function createCashflowAnswer(
   context: AdvisorContext
-): LocalAdvisorAnswer {
+): LocalAdvisorDraftAnswer {
   const healthy =
     context.monthlySurplusMinor >= 0 &&
     context.forecastLowestBalanceMinor >= 0;
@@ -456,7 +459,7 @@ function createCashflowAnswer(
 
 function createGeneralAnswer(
   context: AdvisorContext
-): LocalAdvisorAnswer {
+): LocalAdvisorDraftAnswer {
   return {
     category: "general",
     tone: "neutral",
@@ -491,40 +494,41 @@ export function answerLocalAdvisorQuestion(
   text: string,
   context: AdvisorContext
 ): LocalAdvisorAnswer {
-  const question =
-    createAdvisorQuestion(text);
+  const question = createAdvisorQuestion(text);
+  const category = classifyAdvisorQuestion(question.text);
 
-  const category =
-    classifyAdvisorQuestion(
-      question.text
-    );
+  let answer: LocalAdvisorDraftAnswer;
 
   switch (category) {
     case "affordability":
-      return createAffordabilityAnswer(
-        question.text,
-        context
-      );
-
+      answer = createAffordabilityAnswer(question.text, context);
+      break;
     case "investing":
-      return createInvestingAnswer(
-        question.text,
-        context
-      );
-
+      answer = createInvestingAnswer(question.text, context);
+      break;
     case "saving":
-      return createSavingAnswer(
-        context
-      );
-
+      answer = createSavingAnswer(context);
+      break;
     case "cashflow":
-      return createCashflowAnswer(
-        context
-      );
-
+      answer = createCashflowAnswer(context);
+      break;
     default:
-      return createGeneralAnswer(
-        context
-      );
+      answer = createGeneralAnswer(context);
+      break;
   }
+
+  const requestedAmountMinor =
+    category === "affordability" || category === "investing"
+      ? parseMoneyAmountMinor(question.text)
+      : null;
+
+  return {
+    ...answer,
+    actions: createAdvisorActions(
+      context,
+      answer.assessment,
+      answer.category,
+      requestedAmountMinor
+    ),
+  };
 }

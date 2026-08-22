@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import {
+  ArrowRight,
   Bot,
   Gauge,
   Send,
@@ -356,6 +357,44 @@ export default function AdvisorChat({
                         </p>
                       </div>
                     )}
+
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                        Recommended actions
+                      </p>
+
+                      <div className="mt-2 space-y-2">
+                        {entry.answer.actions.map((action) => (
+                          <div
+                            key={action.id}
+                            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-3"
+                          >
+                            <div className="flex items-start gap-3">
+                              <ArrowRight
+                                size={15}
+                                className="mt-0.5 shrink-0 text-blue-400"
+                              />
+
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-white">
+                                    {action.title}
+                                  </p>
+
+                                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                                    {action.priority}
+                                  </span>
+                                </div>
+
+                                <p className="mt-1 text-sm leading-6 text-zinc-400">
+                                  {action.detail}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
                     <div className="mt-5 rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
