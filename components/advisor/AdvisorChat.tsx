@@ -7,8 +7,11 @@ import {
 } from "react";
 import {
   Bot,
+  Gauge,
   Send,
+  ShieldCheck,
   Sparkles,
+  TriangleAlert,
   UserRound,
 } from "lucide-react";
 
@@ -68,6 +71,44 @@ function getToneClasses(
         article:
           "border-blue-500/20 bg-blue-500/[0.04]",
         label: "text-blue-400",
+      };
+  }
+}
+
+function getVerdictPresentation(
+  verdict: LocalAdvisorAnswer["assessment"]["verdict"]
+) {
+  switch (verdict) {
+    case "safe":
+      return {
+        label: "Safe",
+        className:
+          "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+        Icon: ShieldCheck,
+      };
+
+    case "tight":
+      return {
+        label: "Tight",
+        className:
+          "border-amber-500/20 bg-amber-500/10 text-amber-300",
+        Icon: Gauge,
+      };
+
+    case "risky":
+      return {
+        label: "Risky",
+        className:
+          "border-red-500/20 bg-red-500/10 text-red-300",
+        Icon: TriangleAlert,
+      };
+
+    default:
+      return {
+        label: "Info",
+        className:
+          "border-blue-500/20 bg-blue-500/10 text-blue-300",
+        Icon: Bot,
       };
   }
 }
@@ -151,8 +192,8 @@ export default function AdvisorChat({
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
           Finovo analyses the financial data already stored in your browser
-          with its local planning engine. No external AI service or API key
-          is required.
+          and turns it into a local Safe, Tight or Risky planning assessment.
+          No external AI service or API key is required.
         </p>
       </div>
 
@@ -221,6 +262,14 @@ export default function AdvisorChat({
                   entry.answer.tone
                 );
 
+              const verdict =
+                getVerdictPresentation(
+                  entry.answer.assessment.verdict
+                );
+
+              const VerdictIcon =
+                verdict.Icon;
+
               return (
                 <div
                   key={entry.id}
@@ -236,7 +285,36 @@ export default function AdvisorChat({
                       Finovo Advisor
                     </div>
 
-                    <h3 className="mt-3 text-lg font-semibold text-white">
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <div
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${verdict.className}`}
+                      >
+                        <VerdictIcon size={14} />
+                        {verdict.label}
+                      </div>
+
+                      <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
+                        Fit score{" "}
+                        <span className="font-semibold text-white">
+                          {
+                            entry.answer
+                              .assessment
+                              .score
+                          }
+                          /100
+                        </span>
+                      </div>
+
+                      <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
+                        {
+                          entry.answer
+                            .assessment
+                            .label
+                        }
+                      </div>
+                    </div>
+
+                    <h3 className="mt-4 text-lg font-semibold text-white">
                       {
                         entry.answer
                           .headline
@@ -278,6 +356,33 @@ export default function AdvisorChat({
                         </p>
                       </div>
                     )}
+
+                    <div className="mt-5 rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                        Estimated monthly room
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        €{(
+                          entry.answer
+                            .assessment
+                            .estimatedMonthlyRoomMinor /
+                          100
+                        ).toLocaleString(
+                          "en-IE",
+                          {
+                            minimumFractionDigits:
+                              2,
+                            maximumFractionDigits:
+                              2,
+                          }
+                        )}
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-zinc-600">
+                        Based on recorded monthly surplus before unrecorded or one-off costs.
+                      </p>
+                    </div>
 
                     <p className="mt-5 text-xs leading-5 text-zinc-600">
                       {

@@ -3,6 +3,19 @@ export type LocalAdvisorTone =
   | "caution"
   | "neutral";
 
+export type LocalAdvisorVerdict =
+  | "safe"
+  | "tight"
+  | "risky"
+  | "informational";
+
+export type LocalAdvisorAssessment = {
+  verdict: LocalAdvisorVerdict;
+  score: number;
+  label: string;
+  estimatedMonthlyRoomMinor: number;
+};
+
 export type LocalAdvisorAnswer = {
   category:
     | "affordability"
@@ -16,4 +29,5 @@ export type LocalAdvisorAnswer = {
   supportingPoints: string[];
   recommendation: string | null;
   disclaimer: string;
+  assessment: LocalAdvisorAssessment;
 };

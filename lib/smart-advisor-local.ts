@@ -4,6 +4,11 @@ import {
   createAdvisorQuestion,
 } from "./advisor";
 import type { LocalAdvisorAnswer } from "./smart-advisor-local-types";
+import {
+  assessCurrentFinancialPosition,
+  assessMonthlyCommitment,
+  assessOneOffPurchase,
+} from "./advisor-assessment";
 import { formatCurrency } from "./money";
 import { amountMinorToEuroAmount } from "./transaction-amount";
 
@@ -152,6 +157,10 @@ function createAffordabilityAnswer(
         "Try a question such as “Can I afford a €2,000 holiday?”",
       disclaimer:
         "This is an informational planning calculation based only on data currently stored in Finovo.",
+      assessment:
+        assessCurrentFinancialPosition(
+          context
+        ),
     };
   }
 
@@ -232,6 +241,11 @@ function createAffordabilityAnswer(
       : "Consider reducing the amount or delaying the purchase until your forecast and cash buffer are stronger.",
     disclaimer:
       "This is an informational planning calculation based only on data currently stored in Finovo.",
+    assessment:
+      assessOneOffPurchase(
+        purchaseMinor,
+        context
+      ),
   };
 }
 
@@ -265,6 +279,10 @@ function createInvestingAnswer(
         "Try “What if I invest €250 per month extra?”",
       disclaimer:
         "No investment return is assumed here and this is not investment advice.",
+      assessment:
+        assessCurrentFinancialPosition(
+          context
+        ),
     };
   }
 
@@ -322,6 +340,11 @@ function createInvestingAnswer(
       : "A smaller monthly contribution would fit your current cash flow more comfortably.",
     disclaimer:
       "This calculation models contributions only and does not predict or guarantee investment returns.",
+    assessment:
+      assessMonthlyCommitment(
+        contributionMinor,
+        context
+      ),
   };
 }
 
@@ -372,6 +395,10 @@ function createSavingAnswer(
       : "Focus first on restoring positive monthly cash flow before increasing goal contributions.",
     disclaimer:
       "This is informational planning support based on the data currently stored in Finovo.",
+    assessment:
+      assessCurrentFinancialPosition(
+        context
+      ),
   };
 }
 
@@ -420,6 +447,10 @@ function createCashflowAnswer(
       : "Review recurring payments and flexible budget categories first.",
     disclaimer:
       "Forecasts depend on the transactions and recurring items currently recorded in Finovo.",
+    assessment:
+      assessCurrentFinancialPosition(
+        context
+      ),
   };
 }
 
@@ -449,6 +480,10 @@ function createGeneralAnswer(
       "For example, ask whether you can afford a specific purchase or whether a monthly investment fits your cash flow.",
     disclaimer:
       "This is informational planning support, not personal financial advice.",
+    assessment:
+      assessCurrentFinancialPosition(
+        context
+      ),
   };
 }
 

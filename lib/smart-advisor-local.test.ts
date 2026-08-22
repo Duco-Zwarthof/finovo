@@ -140,4 +140,21 @@ describe("local smart advisor", () => {
       )
     ).toBe(true);
   });
+
+  it("adds a Safe, Tight or Risky assessment to answers", () => {
+    const answer =
+      answerLocalAdvisorQuestion(
+        "What if I invest €900 per month extra?",
+        context
+      );
+
+    expect(
+      answer.assessment.verdict
+    ).toBe("tight");
+
+    expect(
+      answer.assessment
+        .estimatedMonthlyRoomMinor
+    ).toBe(100_000);
+  });
 });
