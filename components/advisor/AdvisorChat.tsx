@@ -7,15 +7,24 @@ import {
 } from "react";
 import {
   Bot,
+  CircleAlert,
+  LoaderCircle,
   Send,
   Sparkles,
   UserRound,
 } from "lucide-react";
 
-import type { AdvisorContext } from "@/lib/advisor-types";
-import { createAdvisorQuestion } from "@/lib/advisor";
-import type { LocalAdvisorAnswer } from "@/lib/smart-advisor-local-types";
-import { answerLocalAdvisorQuestion } from "@/lib/smart-advisor-local";
+import type {
+  AdvisorContext,
+  AdvisorDraftAnswer,
+} from "@/lib/advisor-types";
+import {
+  createAdvisorDraftAnswer,
+  createAdvisorQuestion,
+} from "@/lib/advisor";
+import type {
+  AdvisorApiResponse,
+} from "@/lib/advisor-api";
 
 type AdvisorChatProps = {
   context: AdvisorContext;
@@ -29,25 +38,75 @@ type ChatEntry =
     }
   | {
       id: string;
-      role: "advisor";
-      answer: LocalAdvisorAnswer;
+      role: "advisor-ai";
+      text: string;
+    }
+  | {
+      id: string;
+      role: "advisor-local";
+      answer: AdvisorDraftAnswer;
+      reason: string;
     };
 
 const suggestedQuestions = [
   "Can I afford a €2,000 holiday?",
-  "What if I invest €250 per month extra?",
+  "Should I invest more each month?",
   "How can I make faster progress toward my savings goal?",
   "How healthy is my current cash flow?",
 ] as const;
 
-const toneClasses = {
-  positive:
-    "border-emerald-500/20 bg-emerald-500/[0.04]",
-  caution:
-    "border-amber-500/20 bg-amber-500/[0.04]",
-  neutral:
-    "border-blue-500/20 bg-blue-500/[0.04]",
-} as const;
+async function requestAdvisorAnswer(
+  question: string,
+  context: AdvisorContext
+): Promise<AdvisorApiResponse> {
+  try {
+    const response = await fetch(
+      "/api/advisor",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          question,
+          context,
+        }),
+      }
+    );
+
+    let body: AdvisorApiResponse;
+
+    try {
+      body =
+        (await response.json()) as AdvisorApiResponse;
+    } catch {
+      return {
+        ok: false,
+        error:
+          "The advisor returned an unreadable response.",
+      };
+    }
+
+    if (!response.ok) {
+      return body.ok
+        ? {
+            ok: false,
+            error:
+              "The advisor request could not be completed.",
+          }
+        : body;
+    }
+
+    return body;
+  } catch {
+    return {
+      ok: false,
+      error:
+        "The AI service could not be reached.",
+    };
+  }
+}
 
 export default function AdvisorChat({
   context,
@@ -57,6 +116,12 @@ export default function AdvisorChat({
 
   const [entries, setEntries] =
     useState<ChatEntry[]>([]);
+
+  const [isLoading, setIsLoading] =
+    useState(false);
+
+  const [statusMessage, setStatusMessage] =
+    useState<string | null>(null);
 
   const hasConversation =
     entries.length > 0;
@@ -69,9 +134,13 @@ export default function AdvisorChat({
     [hasConversation]
   );
 
-  function askQuestion(
+  async function askQuestion(
     rawText: string
   ) {
+    if (isLoading) {
+      return;
+    }
+
     const trimmed = rawText.trim();
 
     if (!trimmed) {
@@ -87,34 +156,73 @@ export default function AdvisorChat({
       return;
     }
 
-    const answer =
-      answerLocalAdvisorQuestion(
+    const userEntry: ChatEntry = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text: parsedQuestion.text,
+    };
+
+    setEntries((current) => [
+      ...current,
+      userEntry,
+    ]);
+
+    setQuestion("");
+    setStatusMessage(null);
+    setIsLoading(true);
+
+    const response =
+      await requestAdvisorAnswer(
         parsedQuestion.text,
         context
       );
 
+    if (response.ok) {
+      const aiEntry: ChatEntry = {
+        id: crypto.randomUUID(),
+        role: "advisor-ai",
+        text: response.answer,
+      };
+
+      setEntries((current) => [
+        ...current,
+        aiEntry,
+      ]);
+
+      setIsLoading(false);
+      return;
+    }
+
+    const fallbackAnswer =
+      createAdvisorDraftAnswer(
+        parsedQuestion,
+        context
+      );
+
+    const fallbackEntry: ChatEntry = {
+      id: crypto.randomUUID(),
+      role: "advisor-local",
+      answer: fallbackAnswer,
+      reason: response.error,
+    };
+
     setEntries((current) => [
       ...current,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        text: parsedQuestion.text,
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "advisor",
-        answer,
-      },
+      fallbackEntry,
     ]);
 
-    setQuestion("");
+    setStatusMessage(
+      "AI response unavailable. Finovo used the local planning fallback instead."
+    );
+
+    setIsLoading(false);
   }
 
   function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    askQuestion(question);
+    void askQuestion(question);
   }
 
   return (
@@ -122,7 +230,7 @@ export default function AdvisorChat({
       <div className="border-b border-white/10 px-6 py-6 sm:px-8">
         <div className="flex items-center gap-2 text-sm font-semibold text-blue-400">
           <Sparkles size={17} />
-          <span>Smart Financial Advisor</span>
+          <span>AI Financial Advisor</span>
         </div>
 
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -130,10 +238,23 @@ export default function AdvisorChat({
         </h1>
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-          Finovo answers locally using your recorded cash flow, forecast,
-          liquidity, goals and financial health. No paid AI API is required.
+          Finovo sends a compact financial context to the secure advisor
+          endpoint. If AI is unavailable, the local planning engine is used
+          as a fallback.
         </p>
       </div>
+
+      {statusMessage && (
+        <div className="border-b border-white/10 bg-amber-500/[0.06] px-6 py-3 sm:px-8">
+          <div className="flex items-start gap-2 text-sm text-amber-200">
+            <CircleAlert
+              size={16}
+              className="mt-0.5 shrink-0"
+            />
+            <span>{statusMessage}</span>
+          </div>
+        </div>
+      )}
 
       <div className="min-h-[30rem] px-6 py-6 sm:px-8">
         {!hasConversation ? (
@@ -147,8 +268,8 @@ export default function AdvisorChat({
             </h2>
 
             <p className="mt-2 max-w-lg text-sm leading-6 text-zinc-500">
-              Important balances and forecasts are calculated by
-              Finovo&apos;s own financial engines instead of an external AI model.
+              Finovo uses your liquidity, cash flow, forecast, financial
+              health and goal progress to structure the answer.
             </p>
 
             <div className="mt-7 grid w-full max-w-3xl gap-3 sm:grid-cols-2">
@@ -157,12 +278,13 @@ export default function AdvisorChat({
                   <button
                     key={suggestion}
                     type="button"
+                    disabled={isLoading}
                     onClick={() =>
-                      askQuestion(
+                      void askQuestion(
                         suggestion
                       )
                     }
-                    className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 text-left text-sm font-medium text-zinc-300 transition hover:border-blue-500/30 hover:bg-blue-500/[0.06] hover:text-white"
+                    className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 text-left text-sm font-medium text-zinc-300 transition hover:border-blue-500/30 hover:bg-blue-500/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {suggestion}
                   </button>
@@ -195,21 +317,44 @@ export default function AdvisorChat({
                 );
               }
 
+              if (
+                entry.role ===
+                "advisor-ai"
+              ) {
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex justify-start"
+                  >
+                    <article className="max-w-3xl rounded-2xl rounded-bl-md border border-blue-500/20 bg-blue-500/[0.04] px-5 py-5">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
+                        <Bot size={15} />
+                        Finovo Advisor
+                      </div>
+
+                      <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-zinc-300">
+                        {entry.text}
+                      </div>
+
+                      <p className="mt-5 text-xs leading-5 text-zinc-600">
+                        AI-generated planning support based on the
+                        financial context currently available in Finovo.
+                        It is not personal financial advice.
+                      </p>
+                    </article>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={entry.id}
                   className="flex justify-start"
                 >
-                  <article
-                    className={`max-w-3xl rounded-2xl rounded-bl-md border px-5 py-5 ${
-                      toneClasses[
-                        entry.answer.tone
-                      ]
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
+                  <article className="max-w-3xl rounded-2xl rounded-bl-md border border-amber-500/15 bg-amber-500/[0.03] px-5 py-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-400">
                       <Bot size={15} />
-                      Finovo Advisor
+                      Local Finovo fallback
                     </div>
 
                     <h3 className="mt-3 text-lg font-semibold text-white">
@@ -219,7 +364,7 @@ export default function AdvisorChat({
                       }
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
                       {
                         entry.answer
                           .summary
@@ -231,7 +376,7 @@ export default function AdvisorChat({
                         (point) => (
                           <div
                             key={point}
-                            className="rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-2.5 text-sm text-zinc-300"
+                            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-300"
                           >
                             {point}
                           </div>
@@ -239,32 +384,34 @@ export default function AdvisorChat({
                       )}
                     </div>
 
-                    {entry.answer
-                      .recommendation && (
-                      <div className="mt-5 rounded-xl border border-blue-500/15 bg-blue-500/[0.05] px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-400">
-                          Finovo suggestion
-                        </p>
-
-                        <p className="mt-2 text-sm leading-6 text-zinc-300">
-                          {
-                            entry.answer
-                              .recommendation
-                          }
-                        </p>
-                      </div>
-                    )}
-
                     <p className="mt-5 text-xs leading-5 text-zinc-600">
-                      {
-                        entry.answer
-                          .disclaimer
-                      }
+                      {entry.answer.disclaimer}
+                    </p>
+
+                    <p className="mt-2 text-xs leading-5 text-amber-500/70">
+                      AI unavailable:{" "}
+                      {entry.reason}
                     </p>
                   </article>
                 </div>
               );
             })}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-3 rounded-2xl rounded-bl-md border border-white/10 bg-zinc-950/70 px-5 py-4 text-sm text-zinc-400"
+                >
+                  <LoaderCircle
+                    size={18}
+                    className="animate-spin text-blue-400"
+                  />
+                  Finovo is thinking…
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -276,6 +423,7 @@ export default function AdvisorChat({
         <div className="flex items-end gap-3">
           <textarea
             value={question}
+            disabled={isLoading}
             onChange={(event) =>
               setQuestion(
                 event.target.value
@@ -284,10 +432,11 @@ export default function AdvisorChat({
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&
-                !event.shiftKey
+                !event.shiftKey &&
+                !isLoading
               ) {
                 event.preventDefault();
-                askQuestion(
+                void askQuestion(
                   question
                 );
               }
@@ -297,18 +446,26 @@ export default function AdvisorChat({
             placeholder={
               questionPlaceholder
             }
-            className="min-h-12 max-h-32 flex-1 resize-y rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500"
+            className="min-h-12 max-h-32 flex-1 resize-y rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
           />
 
           <button
             type="submit"
             disabled={
+              isLoading ||
               question.trim().length === 0
             }
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Ask Finovo"
           >
-            <Send size={18} />
+            {isLoading ? (
+              <LoaderCircle
+                size={18}
+                className="animate-spin"
+              />
+            ) : (
+              <Send size={18} />
+            )}
           </button>
         </div>
 
