@@ -8,6 +8,8 @@ export type AdvisorAction = {
   title: string;
   detail: string;
   priority: AdvisorActionPriority;
+  href: string;
+  ctaLabel: string;
 };
 
 const BUFFER_MONTHS = 3;
@@ -61,6 +63,8 @@ export function createAdvisorActions(
         bufferGapMinor
       )} more liquid reserves to reach about three months of recorded expenses.`,
       priority: assessment.verdict === "risky" ? "high" : "medium",
+      href: "/accounts",
+      ctaLabel: "Review accounts",
     });
   }
 
@@ -71,6 +75,8 @@ export function createAdvisorActions(
       detail:
         "Reduce flexible spending or recurring costs before adding new monthly commitments.",
       priority: "high",
+      href: "/budget",
+      ctaLabel: "Review budget",
     });
   }
 
@@ -85,6 +91,8 @@ export function createAdvisorActions(
           comfortableMonthlyMinor
         )} would leave more breathing room.`,
         priority: "high",
+        href: "/scenario",
+        ctaLabel: "Test lower amount",
       });
     } else if (requestedAmountMinor > comfortableMonthlyMinor) {
       actions.push({
@@ -94,6 +102,8 @@ export function createAdvisorActions(
           comfortableMonthlyMinor
         )} or lower would stay inside Finovo's conservative comfort range based on your recorded surplus.`,
         priority: "medium",
+        href: "/scenario",
+        ctaLabel: "Open scenario",
       });
     } else {
       actions.push({
@@ -102,6 +112,8 @@ export function createAdvisorActions(
         detail:
           "Compare the contribution in the Scenario Planner across bear, base and bull assumptions before changing your real plan.",
         priority: "low",
+        href: "/scenario",
+        ctaLabel: "Stress-test plan",
       });
     }
   }
@@ -126,6 +138,8 @@ export function createAdvisorActions(
               )} or lower would preserve roughly three months of recorded expenses.`
             : "Your current liquid assets do not yet cover Finovo's three-month buffer target, so delaying the purchase would protect liquidity.",
         priority: assessment.verdict === "risky" ? "high" : "medium",
+        href: "/forecast",
+        ctaLabel: "Review forecast",
       });
     }
   }
@@ -137,6 +151,8 @@ export function createAdvisorActions(
         title: "Fix the cash shortfall first",
         detail: `Your saved ${context.scenario.years}-year scenario lets projected cash fall below zero. Lower extra investing, reduce expenses or add income before relying on investment returns.`,
         priority: "high",
+        href: "/scenario",
+        ctaLabel: "Adjust scenario",
       });
     } else if (category === "investing" || category === "saving") {
       actions.push({
@@ -145,6 +161,8 @@ export function createAdvisorActions(
         detail:
           "Use the saved bear, base and bull outcomes as a range rather than planning around only the base case.",
         priority: "low",
+        href: "/scenario",
+        ctaLabel: "Compare scenarios",
       });
     }
   }
@@ -156,8 +174,25 @@ export function createAdvisorActions(
       detail:
         "Your recorded cash flow and liquidity do not currently trigger a stronger corrective action. Keep your data updated and review again before a large change.",
       priority: "low",
+      href: "/",
+      ctaLabel: "Open dashboard",
     });
   }
 
-  return actions.slice(0, 3);
+  const priorityWeight: Record<
+    AdvisorActionPriority,
+    number
+  > = {
+    high: 0,
+    medium: 1,
+    low: 2,
+  };
+
+  return [...actions]
+    .sort(
+      (first, second) =>
+        priorityWeight[first.priority] -
+        priorityWeight[second.priority]
+    )
+    .slice(0, 3);
 }

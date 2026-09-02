@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   FormEvent,
   useMemo,
@@ -7,7 +9,9 @@ import {
 } from "react";
 import {
   ArrowRight,
+  BarChart3,
   Bot,
+  CircleDollarSign,
   Gauge,
   Send,
   ShieldCheck,
@@ -114,6 +118,59 @@ function getVerdictPresentation(
   }
 }
 
+function formatMonthlyRoom(
+  amountMinor: number
+) {
+  return new Intl.NumberFormat(
+    "en-IE",
+    {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }
+  ).format(amountMinor / 100);
+}
+
+function getPrimaryRisk(
+  answer: LocalAdvisorAnswer
+) {
+  const highPriority =
+    answer.actions.find(
+      (action) =>
+        action.priority === "high"
+    );
+
+  if (highPriority) {
+    return highPriority.title;
+  }
+
+  if (
+    answer.assessment.verdict ===
+    "tight"
+  ) {
+    return "Limited financial margin";
+  }
+
+  if (
+    answer.assessment.verdict ===
+    "risky"
+  ) {
+    return "Cash flow or buffer pressure";
+  }
+
+  return "No major risk flagged";
+}
+
+function getBestNextAction(
+  answer: LocalAdvisorAnswer
+) {
+  return (
+    answer.actions[0]?.title ??
+    "Keep your financial data updated"
+  );
+}
+
 export default function AdvisorChat({
   context,
 }: AdvisorChatProps) {
@@ -192,9 +249,9 @@ export default function AdvisorChat({
         </h1>
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-          Finovo analyses the financial data already stored in your browser
-          and turns it into a local Safe, Tight or Risky planning assessment.
-          No external AI service or API key is required.
+          Finovo turns your stored financial data into a local planning
+          assessment, concrete actions and scenario-aware guidance. No external
+          AI service or API key is required.
         </p>
       </div>
 
@@ -235,6 +292,137 @@ export default function AdvisorChat({
           </div>
         ) : (
           <div className="space-y-5">
+            {(() => {
+              const latestAdvisorEntry =
+                [...entries]
+                  .reverse()
+                  .find(
+                    (entry) =>
+                      entry.role ===
+                      "advisor"
+                  );
+
+              if (
+                !latestAdvisorEntry ||
+                latestAdvisorEntry.role !==
+                  "advisor"
+              ) {
+                return null;
+              }
+
+              const latestAnswer =
+                latestAdvisorEntry.answer;
+
+              const verdict =
+                getVerdictPresentation(
+                  latestAnswer.assessment
+                    .verdict
+                );
+
+              const VerdictIcon =
+                verdict.Icon;
+
+              return (
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      <VerdictIcon
+                        size={14}
+                      />
+                      Current position
+                    </div>
+
+                    <div
+                      className={`mt-3 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${verdict.className}`}
+                    >
+                      {verdict.label}
+                    </div>
+
+                    <p className="mt-2 text-xs text-zinc-600">
+                      Fit score{" "}
+                      {
+                        latestAnswer
+                          .assessment
+                          .score
+                      }
+                      /100
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      <CircleDollarSign
+                        size={14}
+                      />
+                      Monthly room
+                    </div>
+
+                    <p className="mt-3 text-xl font-bold text-white">
+                      {formatMonthlyRoom(
+                        latestAnswer
+                          .assessment
+                          .estimatedMonthlyRoomMinor
+                      )}
+                    </p>
+
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Recorded surplus
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      <TriangleAlert
+                        size={14}
+                      />
+                      Main risk
+                    </div>
+
+                    <p className="mt-3 text-sm font-semibold leading-5 text-white">
+                      {getPrimaryRisk(
+                        latestAnswer
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-blue-400">
+                      <BarChart3
+                        size={14}
+                      />
+                      Best next action
+                    </div>
+
+                    <p className="mt-3 text-sm font-semibold leading-5 text-white">
+                      {getBestNextAction(
+                        latestAnswer
+                      )}
+                    </p>
+
+                    {latestAnswer.actions[0] && (
+                      <Link
+                        href={
+                          latestAnswer
+                            .actions[0]
+                            .href
+                        }
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 transition hover:text-blue-300"
+                      >
+                        {
+                          latestAnswer
+                            .actions[0]
+                            .ctaLabel
+                        }
+                        <ArrowRight
+                          size={13}
+                        />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {entries.map((entry) => {
               if (
                 entry.role === "user"
@@ -341,24 +529,7 @@ export default function AdvisorChat({
                         )
                       )}
                     </div>
-
-                    {entry.answer
-                      .recommendation && (
-                      <div className="mt-5 rounded-xl border border-blue-500/15 bg-blue-500/[0.04] px-3 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-400">
-                          Next step
-                        </p>
-
-                        <p className="mt-1 text-sm leading-6 text-zinc-300">
-                          {
-                            entry.answer
-                              .recommendation
-                          }
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="mt-5">
+<div className="mt-5">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
                         Recommended actions
                       </p>
@@ -375,13 +546,21 @@ export default function AdvisorChat({
                                 className="mt-0.5 shrink-0 text-blue-400"
                               />
 
-                              <div>
+                              <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="text-sm font-semibold text-white">
                                     {action.title}
                                   </p>
 
-                                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                                  <span
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                                      action.priority === "high"
+                                        ? "border-red-500/20 bg-red-500/10 text-red-300"
+                                        : action.priority === "medium"
+                                          ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                                          : "border-blue-500/20 bg-blue-500/10 text-blue-300"
+                                    }`}
+                                  >
                                     {action.priority}
                                   </span>
                                 </div>
@@ -389,6 +568,16 @@ export default function AdvisorChat({
                                 <p className="mt-1 text-sm leading-6 text-zinc-400">
                                   {action.detail}
                                 </p>
+
+                                <Link
+                                  href={action.href}
+                                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 transition hover:text-blue-300"
+                                >
+                                  {action.ctaLabel}
+                                  <ArrowRight
+                                    size={13}
+                                  />
+                                </Link>
                               </div>
                             </div>
                           </div>
@@ -396,32 +585,10 @@ export default function AdvisorChat({
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-xl border border-white/10 bg-zinc-950/50 px-3 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                        Estimated monthly room
-                      </p>
-
-                      <p className="mt-1 text-sm font-semibold text-white">
-                        €{(
-                          entry.answer
-                            .assessment
-                            .estimatedMonthlyRoomMinor /
-                          100
-                        ).toLocaleString(
-                          "en-IE",
-                          {
-                            minimumFractionDigits:
-                              2,
-                            maximumFractionDigits:
-                              2,
-                          }
-                        )}
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-zinc-600">
-                        Based on recorded monthly surplus before unrecorded or one-off costs.
-                      </p>
-                    </div>
+                    <p className="mt-5 text-xs leading-5 text-zinc-600">
+                      Monthly room is based on recorded surplus and does not include
+                      unrecorded or unexpected costs.
+                    </p>
 
                     <p className="mt-5 text-xs leading-5 text-zinc-600">
                       {

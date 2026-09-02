@@ -81,4 +81,53 @@ describe("advisor recommendations", () => {
 
     expect(actions[0].id).toBe("maintain-plan");
   });
+
+  it("adds a destination to every action", () => {
+    const assessment =
+      assessCurrentFinancialPosition(
+        context
+      );
+
+    const actions =
+      createAdvisorActions(
+        context,
+        assessment,
+        "general"
+      );
+
+    for (const action of actions) {
+      expect(
+        action.href.startsWith("/")
+      ).toBe(true);
+
+      expect(
+        action.ctaLabel.length
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("sorts high-priority actions first", () => {
+    const stressedContext: AdvisorContext = {
+      ...context,
+      liquidAssetsMinor: 100_000,
+      monthlySurplusMinor: -10_000,
+      forecastLowestBalanceMinor: -25_000,
+    };
+
+    const assessment =
+      assessCurrentFinancialPosition(
+        stressedContext
+      );
+
+    const actions =
+      createAdvisorActions(
+        stressedContext,
+        assessment,
+        "general"
+      );
+
+    expect(
+      actions[0].priority
+    ).toBe("high");
+  });
 });
