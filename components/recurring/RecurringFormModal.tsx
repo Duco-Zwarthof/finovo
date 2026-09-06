@@ -9,6 +9,9 @@ import {
   X,
 } from "lucide-react";
 
+import type {
+  Account,
+} from "@/lib/account-types";
 import {
   RECURRING_FREQUENCIES,
   type RecurringFrequency,
@@ -27,6 +30,7 @@ import {
 
 type RecurringFormModalProps = {
   item?: RecurringTransaction;
+  accounts: readonly Account[];
   onClose: () => void;
   onSave: (
     item: RecurringTransaction
@@ -55,6 +59,7 @@ function initialMoneyValue(amountMinor?: number) {
 
 export default function RecurringFormModal({
   item,
+  accounts,
   onClose,
   onSave,
   onDelete,
@@ -93,6 +98,8 @@ export default function RecurringFormModal({
         ? String(item.dayOfMonth)
         : ""
     );
+  const [accountId, setAccountId] =
+    useState(item?.accountId ?? "");
   const [isActive, setIsActive] =
     useState(item?.isActive ?? true);
   const [error, setError] = useState<
@@ -133,6 +140,11 @@ export default function RecurringFormModal({
                 : endDate,
             dayOfMonth: normalizedDay,
             isActive,
+            ...(accountId
+              ? {
+                  accountId,
+                }
+              : {}),
           };
 
     if (
@@ -314,6 +326,41 @@ export default function RecurringFormModal({
                 className="rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-blue-500"
               />
             )}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Account for forecast (optional)
+            </label>
+
+            <select
+              value={accountId}
+              onChange={(event) =>
+                setAccountId(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-blue-500"
+            >
+              <option value="">
+                No account assigned
+              </option>
+
+              {accounts.map(
+                (account) => (
+                  <option
+                    key={account.id}
+                    value={account.id}
+                  >
+                    {account.name}
+                  </option>
+                )
+              )}
+            </select>
+
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              Assigning an account lets Finovo project whether that specific balance could run low.
+            </p>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">

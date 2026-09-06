@@ -1,14 +1,19 @@
+import type {
+  Account,
+} from "@/lib/account-types";
 import type { RecurringTransaction } from "@/lib/recurring-transaction-types";
 
 import RecurringCard from "./RecurringCard";
 
 type RecurringListProps = {
   items: readonly RecurringTransaction[];
+  accounts: readonly Account[];
   onEdit: (itemId: string) => void;
 };
 
 export default function RecurringList({
   items,
+  accounts,
   onEdit,
 }: RecurringListProps) {
   return (
@@ -17,6 +22,15 @@ export default function RecurringList({
         <RecurringCard
           key={item.id}
           item={item}
+          accountName={
+            item.accountId
+              ? accounts.find(
+                  (account) =>
+                    account.id ===
+                    item.accountId
+                )?.name
+              : undefined
+          }
           onEdit={onEdit}
         />
       ))}

@@ -7,14 +7,16 @@ import {
 
 import { useHasHydrated } from "@/hooks/useHasHydrated";
 
+import AccountForecasts from "@/components/forecast/AccountForecasts";
 import ForecastChart from "@/components/forecast/ForecastChart";
 import ForecastHero from "@/components/forecast/ForecastHero";
+import ForecastOutlook from "@/components/forecast/ForecastOutlook";
 import UpcomingPayments from "@/components/forecast/UpcomingPayments";
 import Sidebar from "@/components/layout/Sidebar";
 import StorageNotice from "@/components/shared/StorageNotice";
 
 import { readStoredAccounts } from "@/lib/account-storage";
-import { calculateCashflowForecast } from "@/lib/cashflow-forecast";
+import { calculateCashflowForecastAnalysis } from "@/lib/cashflow-forecast-analysis";
 import { readStoredRecurringTransactions } from "@/lib/recurring-transaction-storage";
 
 const FORECAST_HORIZONS = [
@@ -104,9 +106,9 @@ export default function ForecastPage() {
     [horizon]
   );
 
-  const forecast = useMemo(
+  const analysis = useMemo(
     () =>
-      calculateCashflowForecast(
+      calculateCashflowForecastAnalysis(
         accountResult.value,
         recurringResult.value,
         startDate,
@@ -119,6 +121,9 @@ export default function ForecastPage() {
       endDate,
     ]
   );
+
+  const forecast =
+    analysis.forecast;
 
   const storageMessage =
     getStorageMessage([
@@ -170,6 +175,16 @@ export default function ForecastPage() {
                 }
               )}
             </div>
+
+            <ForecastOutlook
+              snapshots={
+                analysis.horizonSnapshots
+              }
+            />
+
+            <AccountForecasts
+              analysis={analysis}
+            />
 
             <div className="mt-8">
               <ForecastChart

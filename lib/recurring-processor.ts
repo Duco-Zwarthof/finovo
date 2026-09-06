@@ -49,6 +49,12 @@ export function createTransactionFromRecurringOccurrence(
     amountMinor: item.amountMinor,
     type: item.type,
     date,
+    ...(item.accountId
+      ? {
+          accountId:
+            item.accountId,
+        }
+      : {}),
   };
 }
 

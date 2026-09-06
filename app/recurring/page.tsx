@@ -11,6 +11,7 @@ import RecurringHero from "@/components/recurring/RecurringHero";
 import RecurringList from "@/components/recurring/RecurringList";
 import StorageNotice from "@/components/shared/StorageNotice";
 
+import { readStoredAccounts } from "@/lib/account-storage";
 import {
   readStoredRecurringTransactions,
   writeStoredRecurringTransactions,
@@ -87,6 +88,10 @@ export default function RecurringPage() {
 
   const [initialResult] = useState(() =>
     readStoredRecurringTransactions([])
+  );
+
+  const [accountResult] = useState(() =>
+    readStoredAccounts([])
   );
 
   const [items, setItems] = useState<
@@ -315,6 +320,9 @@ export default function RecurringPage() {
 
                   <RecurringList
                     items={items}
+                    accounts={
+                      accountResult.value
+                    }
                     onEdit={openEdit}
                   />
                 </>
@@ -327,6 +335,9 @@ export default function RecurringPage() {
       {isFormOpen && (
         <RecurringFormModal
           item={editingItem ?? undefined}
+          accounts={
+            accountResult.value
+          }
           onClose={() => {
             setEditingItem(null);
             setIsFormOpen(false);

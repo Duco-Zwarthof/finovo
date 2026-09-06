@@ -115,7 +115,14 @@ export function isValidRecurringTransaction(
     datesAreOrdered &&
     hasValidDay &&
     frequencyAllowsDay &&
-    typeof item.isActive === "boolean"
+    typeof item.isActive === "boolean" &&
+    (
+      item.accountId === undefined ||
+      (
+        typeof item.accountId === "string" &&
+        item.accountId.trim().length > 0
+      )
+    )
   );
 }
 

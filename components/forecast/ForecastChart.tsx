@@ -12,7 +12,7 @@ import {
 
 import type { CashflowForecastPoint } from "@/lib/cashflow-forecast-types";
 import { formatCurrency } from "@/lib/money";
-import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
+import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 
 type ForecastChartProps = {
   points: readonly CashflowForecastPoint[];
@@ -30,7 +30,7 @@ function formatDate(value: string) {
 
 function formatMinorCurrency(amountMinor: number) {
   return formatCurrency(
-    amountMinorToEuroAmount(amountMinor) ?? 0
+    minorUnitsToEuroAmount(amountMinor) ?? 0
   );
 }
 
@@ -49,7 +49,7 @@ export default function ForecastChart({
     label: formatDate(point.date),
     balanceMinor: point.balanceMinor,
     balanceEuro:
-      amountMinorToEuroAmount(
+      minorUnitsToEuroAmount(
         point.balanceMinor
       ) ?? 0,
   }));

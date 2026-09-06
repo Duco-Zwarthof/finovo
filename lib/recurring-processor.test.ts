@@ -53,6 +53,20 @@ describe("recurring processor", () => {
     });
   });
 
+  it("carries an assigned account into generated transaction history", () => {
+    expect(
+      createTransactionFromRecurringOccurrence(
+        {
+          ...rent,
+          accountId: "checking",
+        },
+        "2026-08-01"
+      )
+    ).toMatchObject({
+      accountId: "checking",
+    });
+  });
+
   it("materializes every due occurrence through the selected date", () => {
     const result =
       processDueRecurringTransactions(

@@ -6,7 +6,7 @@ import {
 
 import type { CashflowForecast } from "@/lib/cashflow-forecast-types";
 import { formatCurrency } from "@/lib/money";
-import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
+import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 
 type ForecastHeroProps = {
   forecast: CashflowForecast;
@@ -15,7 +15,7 @@ type ForecastHeroProps = {
 
 function formatMinorCurrency(amountMinor: number) {
   return formatCurrency(
-    amountMinorToEuroAmount(amountMinor) ?? 0
+    minorUnitsToEuroAmount(amountMinor) ?? 0
   );
 }
 
@@ -45,8 +45,9 @@ export default function ForecastHero({
           </h1>
 
           <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-            Forecasts use your liquid account balances and active recurring
-            income and expenses. They are planning estimates, not guaranteed outcomes.
+            Forecasts use your current liquid account balances and active recurring
+            income and expenses. Assign recurring items to accounts for account-level warnings.
+            Completed transfers are already reflected in the balances you see today.
           </p>
         </div>
 

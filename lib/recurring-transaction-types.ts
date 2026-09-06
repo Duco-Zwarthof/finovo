@@ -20,6 +20,7 @@ export type RecurringTransaction = {
   endDate: string | null;
   dayOfMonth: number | null;
   isActive: boolean;
+  accountId?: string;
 };
 
 export type RecurringOccurrence = {

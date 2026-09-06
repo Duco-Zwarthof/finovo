@@ -13,6 +13,7 @@ import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
 
 type RecurringCardProps = {
   item: RecurringTransaction;
+  accountName?: string;
   onEdit: (itemId: string) => void;
 };
 
@@ -33,6 +34,7 @@ function formatMinorCurrency(amountMinor: number) {
 
 export default function RecurringCard({
   item,
+  accountName,
   onEdit,
 }: RecurringCardProps) {
   return (
@@ -66,6 +68,12 @@ export default function RecurringCard({
               <p className="mt-1 text-sm text-zinc-500">
                 {item.category} ·{" "}
                 {frequencyLabels[item.frequency]}
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-600">
+                {accountName
+                  ? `Forecast account: ${accountName}`
+                  : "No forecast account assigned"}
               </p>
             </div>
           </div>

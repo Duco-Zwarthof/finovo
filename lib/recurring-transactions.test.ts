@@ -42,6 +42,22 @@ describe("recurring transactions", () => {
     ).toBe(false);
   });
 
+  it("accepts an optional forecast account assignment", () => {
+    expect(
+      isValidRecurringTransaction({
+        ...rent,
+        accountId: "checking",
+      })
+    ).toBe(true);
+
+    expect(
+      isValidRecurringTransaction({
+        ...rent,
+        accountId: "",
+      })
+    ).toBe(false);
+  });
+
   it("adds, updates and deletes items", () => {
     const added =
       addRecurringTransaction(

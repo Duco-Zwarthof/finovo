@@ -6,7 +6,7 @@ import {
 
 import type { CashflowForecastEvent } from "@/lib/cashflow-forecast-types";
 import { formatCurrency } from "@/lib/money";
-import { amountMinorToEuroAmount } from "@/lib/transaction-amount";
+import { minorUnitsToEuroAmount } from "@/lib/transaction-amount";
 
 type UpcomingPaymentsProps = {
   events: readonly CashflowForecastEvent[];
@@ -14,7 +14,7 @@ type UpcomingPaymentsProps = {
 
 function formatMinorCurrency(amountMinor: number) {
   return formatCurrency(
-    amountMinorToEuroAmount(amountMinor) ?? 0
+    minorUnitsToEuroAmount(amountMinor) ?? 0
   );
 }
 
