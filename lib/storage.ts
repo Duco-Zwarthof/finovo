@@ -207,6 +207,7 @@ function parsePersistedTransactionV2(
     type,
     category,
     date,
+    accountId,
   } = value;
   if (
     typeof id !== "string" ||
@@ -217,7 +218,10 @@ function parsePersistedTransactionV2(
     !isTransactionType(type) ||
     !isTransactionCategory(category) ||
     typeof date !== "string" ||
-    !parseLocalDate(date)
+    !parseLocalDate(date) ||
+    (accountId !== undefined &&
+      (typeof accountId !== "string" ||
+        accountId.trim().length === 0))
   ) {
     return null;
   }
@@ -229,6 +233,12 @@ function parsePersistedTransactionV2(
     type,
     category,
     date,
+    ...(typeof accountId ===
+      "string"
+      ? {
+          accountId,
+        }
+      : {}),
   };
 }
 

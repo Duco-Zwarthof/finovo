@@ -207,7 +207,10 @@ export function serializeTransactionsToCsv(
   transactions: readonly Transaction[]
 ) {
   const rows = [
-    REQUIRED_HEADERS.join(","),
+    [
+      ...REQUIRED_HEADERS,
+      "accountId",
+    ].join(","),
   ];
 
   for (const transaction of transactions) {
@@ -229,6 +232,10 @@ export function serializeTransactionsToCsv(
           transaction.amountMinor /
           100
         ).toFixed(2),
+        escapeCsvCell(
+          transaction.accountId ??
+            ""
+        ),
       ].join(",")
     );
   }
@@ -324,6 +331,11 @@ export function parseTransactionsCsv(
       number
     >;
 
+  const accountIdIndex =
+    headers.indexOf(
+      "accountid"
+    );
+
   const transactions: Transaction[] =
     [];
   const errors: string[] = [];
@@ -378,6 +390,15 @@ export function parseTransactionsCsv(
           getValue("amount")
         )
       );
+
+    const accountId =
+      accountIdIndex >= 0
+        ? (
+            cells[
+              accountIdIndex
+            ] ?? ""
+          ).trim()
+        : "";
 
     const rowErrors: string[] =
       [];
@@ -440,6 +461,11 @@ export function parseTransactionsCsv(
       type,
       category,
       date,
+      ...(accountId
+        ? {
+            accountId,
+          }
+        : {}),
     });
   }
 

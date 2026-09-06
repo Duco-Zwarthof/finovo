@@ -20,6 +20,12 @@ import TransactionsHero from "@/components/transactions/TransactionsHero";
 import TransactionsTrend from "@/components/transactions/TransactionsTrend";
 
 import {
+  readStoredAccounts,
+} from "@/lib/account-storage";
+import type {
+  Account,
+} from "@/lib/account-types";
+import {
   canPersistTransactionMutation,
   createTransactionDataState,
   addTransactionToData,
@@ -127,6 +133,13 @@ export default function TransactionsPage() {
       initialResult
     )
   );
+
+  const [accounts] =
+    useState<Account[]>(() =>
+      readStoredAccounts(
+        []
+      ).value
+    );
 
   const [
     storageHealth,
@@ -448,6 +461,7 @@ export default function TransactionsPage() {
               transactions={
                 exportableTransactions
               }
+              accounts={accounts}
               onImport={
                 handleCsvImport
               }
@@ -466,6 +480,7 @@ export default function TransactionsPage() {
                 transactions={
                   transactions
                 }
+                accounts={accounts}
                 isDemo={isDemo}
                 onEditTransaction={
                   openEditForm
@@ -481,6 +496,7 @@ export default function TransactionsPage() {
 
       {isFormOpen && (
         <AddTransactionModal
+          accounts={accounts}
           transaction={
             editingTransaction ??
             undefined

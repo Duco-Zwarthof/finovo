@@ -13,6 +13,9 @@ import {
   X,
 } from "lucide-react";
 
+import type {
+  Account,
+} from "@/lib/account-types";
 import {
   parseBankTransactionsCsv,
 } from "@/lib/bank-import";
@@ -35,6 +38,9 @@ import {
   minorUnitsToEuroAmount,
 } from "@/lib/transaction-amount";
 import {
+  assignAccountToTransactions,
+} from "@/lib/transaction-accounts";
+import {
   TRANSACTION_CATEGORIES,
   type Transaction,
   type TransactionCategory,
@@ -43,6 +49,7 @@ import {
 type TransactionCsvToolsProps = {
   transactions:
     readonly Transaction[];
+  accounts?: readonly Account[];
   onImport: (
     transactions: Transaction[]
   ) => {
@@ -136,6 +143,7 @@ function createExportFilename() {
 
 export default function TransactionCsvTools({
   transactions,
+  accounts = [],
   onImport,
 }: TransactionCsvToolsProps) {
   const inputRef =
@@ -158,6 +166,11 @@ export default function TransactionCsvTools({
     useState<ImportMessage>(
       null
     );
+
+  const [
+    importAccountId,
+    setImportAccountId,
+  ] = useState("");
 
   function exportCsv() {
     if (
@@ -270,6 +283,29 @@ export default function TransactionCsvTools({
         parsedTransactions
       );
 
+    setImportAccountId(
+      (current) => {
+        if (isFinovoCsv) {
+          return "";
+        }
+
+        if (
+          accounts.some(
+            (account) =>
+              account.id ===
+              current
+          )
+        ) {
+          return current;
+        }
+
+        return accounts.length ===
+          1
+          ? accounts[0].id
+          : "";
+      }
+    );
+
     setPending({
       source,
       transactions:
@@ -361,9 +397,17 @@ export default function TransactionCsvTools({
       }
     }
 
+    const transactionsToImport =
+      importAccountId
+        ? assignAccountToTransactions(
+            pending.transactions,
+            importAccountId
+          )
+        : pending.transactions;
+
     const result =
       onImport(
-        pending.transactions
+        transactionsToImport
       );
 
     const parts = [
@@ -504,6 +548,55 @@ export default function TransactionCsvTools({
                   }
                 </span>
               </p>
+
+              <div className="mt-3">
+                <label
+                  htmlFor="bank-import-account"
+                  className="mb-1.5 block text-xs font-medium text-zinc-400"
+                >
+                  Import into account
+                </label>
+
+                <select
+                  id="bank-import-account"
+                  value={
+                    importAccountId
+                  }
+                  onChange={(event) =>
+                    setImportAccountId(
+                      event.target.value
+                    )
+                  }
+                  className="min-w-56 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 outline-none transition focus:border-blue-500/50"
+                >
+                  <option value="">
+                    File account / unassigned
+                  </option>
+
+                  {accounts.map(
+                    (account) => (
+                      <option
+                        key={
+                          account.id
+                        }
+                        value={
+                          account.id
+                        }
+                      >
+                        {
+                          account.name
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <p className="mt-1.5 text-[11px] leading-4 text-zinc-600">
+                  {accounts.length > 0
+                    ? "Choose an account to apply it to every imported transaction, or keep the file account when available."
+                    : "Create an account first if you want bank imports linked automatically."}
+                </p>
+              </div>
             </div>
 
             <button
@@ -696,8 +789,8 @@ export default function TransactionCsvTools({
           )}
 
           <p className="mt-3 text-xs leading-5 text-zinc-600">
-            Change a category in the preview and Finovo will remember that
-            merchant choice for future bank imports on this device.
+            Choose the destination account and adjust categories before
+            confirming. Finovo remembers merchant category corrections locally.
           </p>
 
           <div className="mt-5 flex justify-end">

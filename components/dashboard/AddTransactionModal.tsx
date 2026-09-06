@@ -10,6 +10,9 @@ import {
   euroAmountToMinor,
 } from "@/lib/transaction-amount";
 import type {
+  Account,
+} from "@/lib/account-types";
+import type {
   Transaction,
   TransactionCategory,
   TransactionType,
@@ -20,6 +23,7 @@ type AddTransactionModalProps = {
   onSave: (transaction: Transaction) => void;
   transaction?: Transaction;
   isDemoTransaction?: boolean;
+  accounts?: readonly Account[];
 };
 
 const incomeCategories: TransactionCategory[] = [
@@ -57,6 +61,7 @@ export default function AddTransactionModal({
   onSave,
   transaction,
   isDemoTransaction = false,
+  accounts,
 }: AddTransactionModalProps) {
   const isEditing = Boolean(transaction);
 
@@ -80,6 +85,23 @@ export default function AddTransactionModal({
   const [date, setDate] = useState(
     transaction?.date ?? formatLocalDate(new Date())
   );
+
+  const [
+    accountId,
+    setAccountId,
+  ] = useState(
+    transaction?.accountId ?? ""
+  );
+
+  const accountOptions =
+    accounts ?? [];
+
+  const hasUnknownAccount =
+    accountId.length > 0 &&
+    !accountOptions.some(
+      (account) =>
+        account.id === accountId
+    );
 
   const categories =
     type === "income"
@@ -123,6 +145,11 @@ export default function AddTransactionModal({
       type,
       category,
       date,
+      ...(accountId
+        ? {
+            accountId,
+          }
+        : {}),
     };
 
     onSave(savedTransaction);
@@ -281,6 +308,57 @@ export default function AddTransactionModal({
               ))}
             </select>
           </div>
+
+          {accounts !== undefined && (
+          <div>
+            <label
+              htmlFor="transaction-account"
+              className="mb-2 block text-sm font-medium text-zinc-300"
+            >
+              Account
+            </label>
+
+            <select
+              id="transaction-account"
+              value={accountId}
+              onChange={(event) =>
+                setAccountId(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 outline-none transition focus:border-blue-500"
+            >
+              <option value="">
+                Unassigned
+              </option>
+
+              {hasUnknownAccount && (
+                <option
+                  value={accountId}
+                >
+                  Unknown account
+                </option>
+              )}
+
+              {accountOptions.map(
+                (account) => (
+                  <option
+                    key={account.id}
+                    value={account.id}
+                  >
+                    {account.name}
+                  </option>
+                )
+              )}
+            </select>
+
+            <p className="mt-2 text-xs leading-5 text-zinc-600">
+              {accountOptions.length > 0
+                ? "Link this transaction to one of your Finovo accounts."
+                : "Create an account on the Accounts page to link transactions."}
+            </p>
+          </div>
+          )}
 
           <div>
             <label

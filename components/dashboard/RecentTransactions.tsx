@@ -25,6 +25,12 @@ import {
 } from "lucide-react";
 
 import type {
+  Account,
+} from "@/lib/account-types";
+import {
+  getTransactionAccountLabel,
+} from "@/lib/transaction-accounts";
+import type {
   Transaction,
   TransactionCategory,
 } from "@/lib/types";
@@ -49,6 +55,7 @@ type RecentTransactionsProps = {
     transaction: Transaction
   ) => void;
   onDeleteTransaction: (id: string) => void;
+  accounts?: readonly Account[];
 };
 
 type TransactionType = "income" | "expense";
@@ -65,6 +72,10 @@ type MonthOption = {
   value: string;
   label: string;
 };
+
+const EMPTY_ACCOUNTS:
+  readonly Account[] = [];
+
 
 const transactionCategories: TransactionCategory[] = [
   "Salary",
@@ -202,7 +213,10 @@ export default function RecentTransactions({
   isDemo,
   onEditTransaction,
   onDeleteTransaction,
+  accounts,
 }: RecentTransactionsProps) {
+  const accountOptions =
+    accounts ?? EMPTY_ACCOUNTS;
   const [searchQuery, setSearchQuery] =
     useState("");
 
@@ -261,6 +275,12 @@ export default function RecentTransactions({
         const transactionMonth =
           getLocalCalendarMonthKey(transaction.date);
 
+        const accountLabel =
+          getTransactionAccountLabel(
+            transaction,
+            accountOptions
+          );
+
         const matchesSearch =
           normalizedSearch === "" ||
           transaction.title
@@ -271,7 +291,13 @@ export default function RecentTransactions({
             .includes(normalizedSearch) ||
           transaction.type
             .toLowerCase()
-            .includes(normalizedSearch);
+            .includes(normalizedSearch) ||
+          (accounts !== undefined &&
+            accountLabel
+              .toLowerCase()
+              .includes(
+                normalizedSearch
+              ));
 
         const matchesMonth =
           selectedMonths.length === 0 ||
@@ -351,6 +377,8 @@ export default function RecentTransactions({
     );
   }, [
     transactions,
+    accounts,
+    accountOptions,
     searchQuery,
     selectedMonths,
     selectedCategories,
@@ -989,6 +1017,12 @@ export default function RecentTransactions({
                     transaction.category
                   );
 
+                const accountLabel =
+                  getTransactionAccountLabel(
+                    transaction,
+                    accounts ?? []
+                  );
+
                 return (
                   <div
                     key={transaction.id}
@@ -1040,6 +1074,27 @@ export default function RecentTransactions({
                             transaction.date
                           )}
                         </span>
+
+                        {accounts !==
+                          undefined && (
+                          <>
+                            <span className="text-zinc-700">
+                              •
+                            </span>
+
+                            <span
+                              className={
+                                transaction.accountId
+                                  ? "text-blue-300"
+                                  : "text-zinc-600"
+                              }
+                            >
+                              {
+                                accountLabel
+                              }
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 

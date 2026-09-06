@@ -27,4 +27,5 @@ export type Transaction = {
   type: TransactionType;
   category: TransactionCategory;
   date: string;
+  accountId?: string;
 };

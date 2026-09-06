@@ -29,6 +29,7 @@ export type PersistedTransactionV2 = {
   type: TransactionType;
   category: TransactionCategory;
   date: string;
+  accountId?: string;
 };
 
 export type PersistedTransactionDataV2 = {
@@ -82,6 +83,12 @@ export function createPersistedTransactionDataV2(
       type: transaction.type,
       category: transaction.category,
       date: transaction.date,
+      ...(transaction.accountId
+        ? {
+            accountId:
+              transaction.accountId,
+          }
+        : {}),
     })),
   };
 }
