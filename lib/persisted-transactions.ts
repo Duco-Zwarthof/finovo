@@ -30,6 +30,7 @@ export type PersistedTransactionV2 = {
   category: TransactionCategory;
   date: string;
   accountId?: string;
+  affectsAccountBalance?: boolean;
 };
 
 export type PersistedTransactionDataV2 = {
@@ -87,6 +88,11 @@ export function createPersistedTransactionDataV2(
         ? {
             accountId:
               transaction.accountId,
+          }
+        : {}),
+      ...(transaction.affectsAccountBalance
+        ? {
+            affectsAccountBalance: true,
           }
         : {}),
     })),

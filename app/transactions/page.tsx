@@ -13,6 +13,7 @@ import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import Sidebar from "@/components/layout/Sidebar";
 import StorageNotice from "@/components/shared/StorageNotice";
+import AccountTransferPanel from "@/components/transactions/AccountTransferPanel";
 import TransactionCsvTools from "@/components/transactions/TransactionCsvTools";
 import TransactionPeriodControls from "@/components/transactions/TransactionPeriodControls";
 import TransactionsAnalytics from "@/components/transactions/TransactionsAnalytics";
@@ -21,10 +22,23 @@ import TransactionsTrend from "@/components/transactions/TransactionsTrend";
 
 import {
   readStoredAccounts,
+  writeStoredAccounts,
 } from "@/lib/account-storage";
 import type {
   Account,
 } from "@/lib/account-types";
+import {
+  readStoredAccountTransfers,
+  writeStoredAccountTransfers,
+} from "@/lib/account-transfer-storage";
+import {
+  applyAccountTransfer,
+  reverseAccountTransfer,
+  type AccountTransfer,
+} from "@/lib/account-transfers";
+import {
+  applyTransactionBalanceMutation,
+} from "@/lib/transaction-balance-impact";
 import {
   canPersistTransactionMutation,
   createTransactionDataState,
@@ -134,12 +148,76 @@ export default function TransactionsPage() {
     )
   );
 
-  const [accounts] =
-    useState<Account[]>(() =>
-      readStoredAccounts(
-        []
-      ).value
-    );
+  const [
+    initialAccountResult,
+  ] = useState(() =>
+    readStoredAccounts([])
+  );
+
+  const [
+    accounts,
+    setAccounts,
+  ] = useState<Account[]>(
+    initialAccountResult.value
+  );
+
+  const [
+    initialTransferResult,
+  ] = useState(() =>
+    readStoredAccountTransfers(
+      []
+    )
+  );
+
+  const [
+    transfers,
+    setTransfers,
+  ] = useState<
+    AccountTransfer[]
+  >(
+    initialTransferResult.value
+  );
+
+  const [
+    accountActivityNotice,
+    setAccountActivityNotice,
+  ] = useState<
+    string | null
+  >(() => {
+    if (
+      initialAccountResult.status ===
+        "invalid" ||
+      initialAccountResult.status ===
+        "unsupported"
+    ) {
+      return "Saved account data could not be used safely, so balance-changing actions are disabled on this page.";
+    }
+
+    if (
+      initialAccountResult.status ===
+      "unavailable"
+    ) {
+      return "Account storage is unavailable, so balance-changing actions cannot be saved.";
+    }
+
+    if (
+      initialTransferResult.status ===
+        "invalid" ||
+      initialTransferResult.status ===
+        "unsupported"
+    ) {
+      return "Saved transfer data could not be used safely, so new account transfers are disabled.";
+    }
+
+    if (
+      initialTransferResult.status ===
+      "unavailable"
+    ) {
+      return "Transfer storage is unavailable, so account transfers cannot be saved.";
+    }
+
+    return null;
+  });
 
   const [
     storageHealth,
@@ -274,6 +352,24 @@ export default function TransactionsPage() {
     transactionData.source ===
     "demo";
 
+  function canWriteAccountStorage() {
+    return (
+      initialAccountResult.status ===
+        "missing" ||
+      initialAccountResult.status ===
+        "valid"
+    );
+  }
+
+  function canWriteTransferStorage() {
+    return (
+      initialTransferResult.status ===
+        "missing" ||
+      initialTransferResult.status ===
+        "valid"
+    );
+  }
+
   function persist(
     nextData: Extract<
       typeof transactionData,
@@ -285,16 +381,119 @@ export default function TransactionsPage() {
         initialResult.status
       )
     ) {
-      return;
+      return false;
     }
+
+    const result =
+      writeStoredTransactions(
+        nextData.transactions
+      );
 
     setStorageHealth(
       getWriteHealth(
-        writeStoredTransactions(
-          nextData.transactions
-        )
+        result
       )
     );
+
+    return (
+      result.status ===
+        "written" ||
+      result.status ===
+        "removed"
+    );
+  }
+
+  function commitTransactionWithBalances(
+    nextData: Extract<
+      typeof transactionData,
+      { source: "user" }
+    >,
+    nextAccounts: Account[]
+  ) {
+    if (
+      !canPersistTransactionMutation(
+        initialResult.status
+      ) ||
+      !canWriteAccountStorage()
+    ) {
+      return false;
+    }
+
+    const accountWrite =
+      writeStoredAccounts(
+        nextAccounts
+      );
+
+    if (
+      accountWrite.status !==
+      "written"
+    ) {
+      setAccountActivityNotice(
+        "Finovo could not save the account balance change, so the transaction was not changed."
+      );
+      return false;
+    }
+
+    const transactionWrite =
+      writeStoredTransactions(
+        nextData.transactions
+      );
+
+    setStorageHealth(
+      getWriteHealth(
+        transactionWrite
+      )
+    );
+
+    if (
+      transactionWrite.status !==
+        "written" &&
+      transactionWrite.status !==
+        "removed"
+    ) {
+      writeStoredAccounts(
+        accounts
+      );
+
+      setAccountActivityNotice(
+        "Finovo could not save the transaction. The account balance change was rolled back."
+      );
+
+      return false;
+    }
+
+    setAccounts(
+      nextAccounts
+    );
+    setTransactionData(
+      nextData
+    );
+    setAccountActivityNotice(
+      null
+    );
+
+    return true;
+  }
+
+  function getBalanceImpactError(
+    status:
+      | "missing-account"
+      | "negative-balance"
+      | "overflow"
+  ): string {
+    switch (status) {
+      case "missing-account":
+        return "The linked account no longer exists.";
+
+      case "negative-balance":
+        return "This change would make the selected account balance negative. Update the account balance first or save this transaction as history only.";
+
+      case "overflow":
+        return "This balance change is too large to store safely.";
+
+      default:
+        return "The account balance could not be updated safely.";
+    }
   }
 
   function openAddForm() {
@@ -319,20 +518,54 @@ export default function TransactionsPage() {
   function handleSave(
     transaction: Transaction
   ) {
+    const savedTransaction =
+      editingTransaction &&
+      isDemo
+        ? {
+            ...transaction,
+            id:
+              crypto.randomUUID(),
+          }
+        : transaction;
+
+    const previousTransaction =
+      editingTransaction &&
+      !isDemo
+        ? editingTransaction
+        : null;
+
+    const balanceResult =
+      applyTransactionBalanceMutation(
+        accounts,
+        previousTransaction,
+        savedTransaction
+      );
+
+    if (
+      balanceResult.status ===
+        "missing-account" ||
+      balanceResult.status ===
+        "negative-balance" ||
+      balanceResult.status ===
+        "overflow"
+    ) {
+      return {
+        ok: false as const,
+        error:
+          getBalanceImpactError(
+            balanceResult.status
+          ),
+      };
+    }
+
     let nextData: Extract<
       typeof transactionData,
       { source: "user" }
     >;
 
-    if (editingTransaction) {
-      const savedTransaction =
-        isDemo
-          ? {
-              ...transaction,
-              id: crypto.randomUUID(),
-            }
-          : transaction;
-
+    if (
+      editingTransaction
+    ) {
       nextData =
         updateTransactionInData(
           transactionData,
@@ -342,34 +575,303 @@ export default function TransactionsPage() {
       nextData =
         addTransactionToData(
           transactionData,
-          transaction
+          savedTransaction
         );
     }
 
-    setTransactionData(
-      nextData
-    );
-    persist(nextData);
+    if (
+      balanceResult.status ===
+      "applied"
+    ) {
+      if (
+        !commitTransactionWithBalances(
+          nextData,
+          balanceResult.accounts
+        )
+      ) {
+        return {
+          ok: false as const,
+          error:
+            "Finovo could not safely save both the transaction and account balance. Nothing was changed.",
+        };
+      }
+    } else {
+      setTransactionData(
+        nextData
+      );
+      persist(nextData);
+      setAccountActivityNotice(
+        null
+      );
+    }
+
     closeForm();
+
+    return {
+      ok: true as const,
+    };
   }
 
   function handleDelete(
     id: string
   ) {
+    const deletedTransaction =
+      transactionData.source ===
+      "user"
+        ? transactionData.transactions.find(
+            (transaction) =>
+              transaction.id ===
+              id
+          ) ?? null
+        : null;
+
     const nextData =
       deleteTransactionFromData(
         transactionData,
         id
       );
 
-    setTransactionData(nextData);
-    persist(nextData);
+    const balanceResult =
+      applyTransactionBalanceMutation(
+        accounts,
+        deletedTransaction,
+        null
+      );
+
+    if (
+      balanceResult.status ===
+        "missing-account" ||
+      balanceResult.status ===
+        "negative-balance" ||
+      balanceResult.status ===
+        "overflow"
+    ) {
+      setAccountActivityNotice(
+        `The transaction was not deleted. ${getBalanceImpactError(
+          balanceResult.status
+        )}`
+      );
+      return;
+    }
+
+    if (
+      balanceResult.status ===
+      "applied"
+    ) {
+      if (
+        !commitTransactionWithBalances(
+          nextData,
+          balanceResult.accounts
+        )
+      ) {
+        return;
+      }
+    } else {
+      setTransactionData(
+        nextData
+      );
+      persist(nextData);
+    }
+
+    setAccountActivityNotice(
+      null
+    );
 
     if (
       editingTransaction?.id === id
     ) {
       closeForm();
     }
+  }
+
+  function getTransferError(
+    status:
+      | "invalid"
+      | "missing-account"
+      | "same-account"
+      | "insufficient-funds"
+      | "overflow"
+  ): string {
+    switch (status) {
+      case "invalid":
+        return "The transfer details are invalid.";
+
+      case "missing-account":
+        return "One of the selected accounts no longer exists.";
+
+      case "same-account":
+        return "Choose two different accounts.";
+
+      case "insufficient-funds":
+        return "The source account does not have enough balance for this transfer.";
+
+      case "overflow":
+        return "This transfer is too large to store safely.";
+
+      default:
+        return "The transfer could not be applied safely.";
+    }
+  }
+
+  function commitTransferChange(
+    nextTransfers:
+      AccountTransfer[],
+    nextAccounts: Account[]
+  ) {
+    if (
+      !canWriteAccountStorage() ||
+      !canWriteTransferStorage()
+    ) {
+      return false;
+    }
+
+    const accountWrite =
+      writeStoredAccounts(
+        nextAccounts
+      );
+
+    if (
+      accountWrite.status !==
+      "written"
+    ) {
+      return false;
+    }
+
+    const transferWrite =
+      writeStoredAccountTransfers(
+        nextTransfers
+      );
+
+    if (
+      transferWrite.status !==
+        "written" &&
+      transferWrite.status !==
+        "removed"
+    ) {
+      writeStoredAccounts(
+        accounts
+      );
+      return false;
+    }
+
+    setAccounts(
+      nextAccounts
+    );
+    setTransfers(
+      nextTransfers
+    );
+    setAccountActivityNotice(
+      null
+    );
+
+    return true;
+  }
+
+  function handleCreateTransfer(
+    transfer: AccountTransfer
+  ) {
+    const result =
+      applyAccountTransfer(
+        accounts,
+        transfer
+      );
+
+    if (
+      result.status !==
+      "applied"
+    ) {
+      return {
+        ok: false as const,
+        error:
+          getTransferError(
+            result.status
+          ),
+      };
+    }
+
+    const nextTransfers = [
+      transfer,
+      ...transfers,
+    ];
+
+    if (
+      !commitTransferChange(
+        nextTransfers,
+        result.accounts
+      )
+    ) {
+      return {
+        ok: false as const,
+        error:
+          "Finovo could not safely save the transfer and both account balances. Nothing was changed.",
+      };
+    }
+
+    return {
+      ok: true as const,
+    };
+  }
+
+  function handleDeleteTransfer(
+    transferId: string
+  ) {
+    const transfer =
+      transfers.find(
+        (candidate) =>
+          candidate.id ===
+          transferId
+      );
+
+    if (!transfer) {
+      return {
+        ok: false as const,
+        error:
+          "This transfer could not be found.",
+      };
+    }
+
+    const result =
+      reverseAccountTransfer(
+        accounts,
+        transfer
+      );
+
+    if (
+      result.status !==
+      "applied"
+    ) {
+      return {
+        ok: false as const,
+        error:
+          getTransferError(
+            result.status
+          ),
+      };
+    }
+
+    const nextTransfers =
+      transfers.filter(
+        (candidate) =>
+          candidate.id !==
+          transferId
+      );
+
+    if (
+      !commitTransferChange(
+        nextTransfers,
+        result.accounts
+      )
+    ) {
+      return {
+        ok: false as const,
+        error:
+          "Finovo could not safely reverse and delete this transfer. Nothing was changed.",
+      };
+    }
+
+    return {
+      ok: true as const,
+    };
   }
 
   function handleCsvImport(
@@ -436,6 +938,13 @@ export default function TransactionsPage() {
               )}
             />
 
+            <StorageNotice
+              title="Account activity notice"
+              message={
+                accountActivityNotice
+              }
+            />
+
             <TransactionPeriodControls
               selectedMonth={
                 referenceDate
@@ -464,6 +973,19 @@ export default function TransactionsPage() {
               accounts={accounts}
               onImport={
                 handleCsvImport
+              }
+            />
+
+            <AccountTransferPanel
+              accounts={accounts}
+              transfers={
+                transfers
+              }
+              onCreate={
+                handleCreateTransfer
+              }
+              onDelete={
+                handleDeleteTransfer
               }
             />
 

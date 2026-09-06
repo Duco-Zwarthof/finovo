@@ -28,4 +28,5 @@ export type Transaction = {
   category: TransactionCategory;
   date: string;
   accountId?: string;
+  affectsAccountBalance?: boolean;
 };

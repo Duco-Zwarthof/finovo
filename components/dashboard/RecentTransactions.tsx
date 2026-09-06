@@ -217,6 +217,10 @@ export default function RecentTransactions({
 }: RecentTransactionsProps) {
   const accountOptions =
     accounts ?? EMPTY_ACCOUNTS;
+
+  const canManageBalanceSynced =
+    accounts !== undefined;
+
   const [searchQuery, setSearchQuery] =
     useState("");
 
@@ -1058,6 +1062,12 @@ export default function RecentTransactions({
                         >
                           {transaction.type}
                         </span>
+
+                        {transaction.affectsAccountBalance && (
+                          <span className="rounded-full border border-violet-500/20 bg-violet-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
+                            Balance synced
+                          </span>
+                        )}
                       </div>
 
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
@@ -1124,26 +1134,46 @@ export default function RecentTransactions({
                       <div className="flex items-center gap-2 opacity-70 transition group-hover:opacity-100">
                         <button
                           type="button"
+                          disabled={
+                            transaction.affectsAccountBalance &&
+                            !canManageBalanceSynced
+                          }
                           onClick={() =>
                             onEditTransaction(
                               transaction
                             )
                           }
                           aria-label={`Edit ${transaction.title}`}
-                          className="rounded-xl border border-white/10 p-2.5 text-zinc-400 transition hover:border-blue-500/30 hover:bg-blue-500/10 hover:text-blue-400"
+                          title={
+                            transaction.affectsAccountBalance &&
+                            !canManageBalanceSynced
+                              ? "Open the Transactions page to edit this balance-synced transaction."
+                              : undefined
+                          }
+                          className="rounded-xl border border-white/10 p-2.5 text-zinc-400 transition hover:border-blue-500/30 hover:bg-blue-500/10 hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:bg-transparent disabled:hover:text-zinc-400"
                         >
                           <Pencil size={16} />
                         </button>
 
                         <button
                           type="button"
+                          disabled={
+                            transaction.affectsAccountBalance &&
+                            !canManageBalanceSynced
+                          }
                           onClick={() =>
                             onDeleteTransaction(
                               transaction.id
                             )
                           }
                           aria-label={`Delete ${transaction.title}`}
-                          className="rounded-xl border border-red-500/20 bg-red-500/5 p-2.5 text-red-400 transition hover:bg-red-500/15"
+                          title={
+                            transaction.affectsAccountBalance &&
+                            !canManageBalanceSynced
+                              ? "Open the Transactions page to delete this balance-synced transaction safely."
+                              : undefined
+                          }
+                          className="rounded-xl border border-red-500/20 bg-red-500/5 p-2.5 text-red-400 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-red-500/5"
                         >
                           <Trash2 size={16} />
                         </button>

@@ -593,7 +593,7 @@ export default function TransactionCsvTools({
 
                 <p className="mt-1.5 text-[11px] leading-4 text-zinc-600">
                   {accounts.length > 0
-                    ? "Choose an account to apply it to every imported transaction, or keep the file account when available."
+                    ? "Choose an account to apply it to every imported transaction, or keep the file account when available. Imported history does not change the current account balance."
                     : "Create an account first if you want bank imports linked automatically."}
                 </p>
               </div>

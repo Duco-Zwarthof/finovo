@@ -18,9 +18,22 @@ import type {
   TransactionType,
 } from "@/lib/types";
 
+export type TransactionSaveFeedback =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 type AddTransactionModalProps = {
   onClose: () => void;
-  onSave: (transaction: Transaction) => void;
+  onSave: (
+    transaction: Transaction
+  ) =>
+    | void
+    | TransactionSaveFeedback;
   transaction?: Transaction;
   isDemoTransaction?: boolean;
   accounts?: readonly Account[];
@@ -93,6 +106,21 @@ export default function AddTransactionModal({
     transaction?.accountId ?? ""
   );
 
+  const [
+    affectsAccountBalance,
+    setAffectsAccountBalance,
+  ] = useState(
+    transaction?.affectsAccountBalance ??
+      false
+  );
+
+  const [
+    saveError,
+    setSaveError,
+  ] = useState<string | null>(
+    null
+  );
+
   const accountOptions =
     accounts ?? [];
 
@@ -101,6 +129,12 @@ export default function AddTransactionModal({
     !accountOptions.some(
       (account) =>
         account.id === accountId
+    );
+
+  const isBalanceSyncedEditLocked =
+    Boolean(
+      transaction?.affectsAccountBalance &&
+        accounts === undefined
     );
 
   const categories =
@@ -127,6 +161,16 @@ export default function AddTransactionModal({
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+    setSaveError(null);
+
+    if (
+      isBalanceSyncedEditLocked
+    ) {
+      setSaveError(
+        "Open this transaction from the Transactions page to edit it safely, because it is synced to an account balance."
+      );
+      return;
+    }
 
     const amountMinor = euroAmountToMinor(amount);
 
@@ -150,9 +194,26 @@ export default function AddTransactionModal({
             accountId,
           }
         : {}),
+      ...(accountId &&
+      affectsAccountBalance
+        ? {
+            affectsAccountBalance:
+              true,
+          }
+        : {}),
     };
 
-    onSave(savedTransaction);
+    const result =
+      onSave(savedTransaction);
+
+    if (
+      result &&
+      result.ok === false
+    ) {
+      setSaveError(
+        result.error
+      );
+    }
   }
 
   return (
@@ -321,11 +382,32 @@ export default function AddTransactionModal({
             <select
               id="transaction-account"
               value={accountId}
-              onChange={(event) =>
+              onChange={(event) => {
+                const nextAccountId =
+                  event.target.value;
+
                 setAccountId(
-                  event.target.value
-                )
-              }
+                  nextAccountId
+                );
+
+                if (
+                  !nextAccountId
+                ) {
+                  setAffectsAccountBalance(
+                    false
+                  );
+                } else if (
+                  !isEditing
+                ) {
+                  setAffectsAccountBalance(
+                    true
+                  );
+                }
+
+                setSaveError(
+                  null
+                );
+              }}
               className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 outline-none transition focus:border-blue-500"
             >
               <option value="">
@@ -357,6 +439,36 @@ export default function AddTransactionModal({
                 ? "Link this transaction to one of your Finovo accounts."
                 : "Create an account on the Accounts page to link transactions."}
             </p>
+
+            {accountId && (
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <input
+                  type="checkbox"
+                  checked={
+                    affectsAccountBalance
+                  }
+                  onChange={(event) => {
+                    setAffectsAccountBalance(
+                      event.target.checked
+                    );
+                    setSaveError(
+                      null
+                    );
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-white/20 bg-zinc-950 text-blue-600"
+                />
+
+                <span>
+                  <span className="block text-xs font-semibold text-zinc-300">
+                    Update current account balance
+                  </span>
+
+                  <span className="mt-1 block text-xs leading-5 text-zinc-600">
+                    When enabled, this income or expense is applied to the selected account balance. Existing and imported history stays unchanged unless explicitly enabled.
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
           )}
 
@@ -380,6 +492,18 @@ export default function AddTransactionModal({
             />
           </div>
 
+          {isBalanceSyncedEditLocked && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-3 py-2.5 text-xs leading-5 text-amber-300">
+              This transaction is synced to an account balance. Edit it from the Transactions page so Finovo can safely reverse and reapply the balance effect.
+            </div>
+          )}
+
+          {saveError && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.07] px-3 py-2.5 text-xs leading-5 text-red-300">
+              {saveError}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -391,7 +515,10 @@ export default function AddTransactionModal({
 
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500"
+              disabled={
+                isBalanceSyncedEditLocked
+              }
+              className="flex-1 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isEditing
                 ? isDemoTransaction

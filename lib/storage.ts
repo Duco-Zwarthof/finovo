@@ -208,6 +208,7 @@ function parsePersistedTransactionV2(
     category,
     date,
     accountId,
+    affectsAccountBalance,
   } = value;
   if (
     typeof id !== "string" ||
@@ -221,7 +222,9 @@ function parsePersistedTransactionV2(
     !parseLocalDate(date) ||
     (accountId !== undefined &&
       (typeof accountId !== "string" ||
-        accountId.trim().length === 0))
+        accountId.trim().length === 0)) ||
+    (affectsAccountBalance !== undefined &&
+      typeof affectsAccountBalance !== "boolean")
   ) {
     return null;
   }
@@ -237,6 +240,11 @@ function parsePersistedTransactionV2(
       "string"
       ? {
           accountId,
+        }
+      : {}),
+    ...(affectsAccountBalance === true
+      ? {
+          affectsAccountBalance: true,
         }
       : {}),
   };
