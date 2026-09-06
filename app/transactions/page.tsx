@@ -14,6 +14,7 @@ import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import Sidebar from "@/components/layout/Sidebar";
 import StorageNotice from "@/components/shared/StorageNotice";
 import AccountTransferPanel from "@/components/transactions/AccountTransferPanel";
+import RecurringDetectionPanel from "@/components/transactions/RecurringDetectionPanel";
 import TransactionCsvTools from "@/components/transactions/TransactionCsvTools";
 import TransactionPeriodControls from "@/components/transactions/TransactionPeriodControls";
 import TransactionsAnalytics from "@/components/transactions/TransactionsAnalytics";
@@ -986,6 +987,12 @@ export default function TransactionsPage() {
               }
               onDelete={
                 handleDeleteTransfer
+              }
+            />
+
+            <RecurringDetectionPanel
+              transactions={
+                transactions
               }
             />
 

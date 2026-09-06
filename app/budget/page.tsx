@@ -11,6 +11,7 @@ import BudgetFormModal from "@/components/budget/BudgetFormModal";
 import BudgetHeader from "@/components/budget/BudgetHeader";
 import BudgetSummary from "@/components/budget/BudgetSummary";
 import BudgetVsActual from "@/components/budget/BudgetVsActual";
+import BudgetHistoryTrends from "@/components/budget/BudgetHistoryTrends";
 import Sidebar from "@/components/layout/Sidebar";
 
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/lib/budget";
 import { formatBudgetMonth } from "@/lib/budget-month";
 import { calculateBudgetActualInsight } from "@/lib/budget-actual";
+import { calculateBudgetHistory } from "@/lib/budget-history";
 import {
   readStoredBudgets,
   writeStoredBudgets,
@@ -242,6 +244,17 @@ export default function BudgetPage() {
     [budgets, transactions, selectedMonth]
   );
 
+  const budgetHistory = useMemo(
+    () =>
+      calculateBudgetHistory(
+        budgets,
+        transactions,
+        selectedMonth,
+        6
+      ),
+    [budgets, transactions, selectedMonth]
+  );
+
   const budgetStorageNotice =
     getBudgetStorageNotice(
       budgetStorageHealth
@@ -397,6 +410,10 @@ export default function BudgetPage() {
 
             <BudgetVsActual
               insight={budgetActualInsight}
+            />
+
+            <BudgetHistoryTrends
+              history={budgetHistory}
             />
 
             <section
