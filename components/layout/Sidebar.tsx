@@ -13,6 +13,7 @@ import {
   Landmark,
   LayoutDashboard,
   PiggyBank,
+  ReceiptText,
   Settings,
   Target,
   TrendingUp,
@@ -22,6 +23,7 @@ import {
 
 const navigationItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "Transactions", icon: ReceiptText, href: "/transactions" },
   { label: "Net Worth", icon: ChartNoAxesCombined, href: "/net-worth" },
   { label: "Accounts", icon: Landmark, href: "/accounts" },
   { label: "Budget", icon: WalletCards, href: "/budget" },
