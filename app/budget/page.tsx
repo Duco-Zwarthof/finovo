@@ -3,16 +3,15 @@
 import {
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
-
-import { useHasHydrated } from "@/hooks/useHasHydrated";
 
 import BudgetCategoryList from "@/components/budget/BudgetCategoryList";
 import BudgetFormModal from "@/components/budget/BudgetFormModal";
 import BudgetHeader from "@/components/budget/BudgetHeader";
 import BudgetSummary from "@/components/budget/BudgetSummary";
+import BudgetVsActual from "@/components/budget/BudgetVsActual";
 import Sidebar from "@/components/layout/Sidebar";
-import StorageNotice from "@/components/shared/StorageNotice";
 
 import {
   addBudget,
@@ -22,6 +21,7 @@ import {
   updateBudget,
 } from "@/lib/budget";
 import { formatBudgetMonth } from "@/lib/budget-month";
+import { calculateBudgetActualInsight } from "@/lib/budget-actual";
 import {
   readStoredBudgets,
   writeStoredBudgets,
@@ -112,6 +112,18 @@ function getBudgetWriteHealth(
     default:
       return "write-failed";
   }
+}
+
+function subscribeToHydration() {
+  return () => {};
+}
+
+function useHasHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
 }
 
 function BudgetPageSkeleton() {
@@ -213,6 +225,16 @@ export default function BudgetPage() {
   const summary = useMemo(
     () =>
       calculateMonthlyBudgetSummary(
+        budgets,
+        transactions,
+        selectedMonth
+      ),
+    [budgets, transactions, selectedMonth]
+  );
+
+  const budgetActualInsight = useMemo(
+    () =>
+      calculateBudgetActualInsight(
         budgets,
         transactions,
         selectedMonth
@@ -337,23 +359,45 @@ export default function BudgetPage() {
               </aside>
             )}
 
-            <StorageNotice
-              title="Budget storage notice"
-              message={budgetStorageNotice}
-              className="mt-4"
-            />
+            {budgetStorageNotice && (
+              <aside
+                role="status"
+                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-amber-200">
+                  Budget storage notice
+                </p>
 
-            <StorageNotice
-              title="Transaction storage notice"
-              message={transactionStorageNotice}
-              className="mt-4"
-            />
+                <p className="mt-1 text-sm leading-6 text-amber-100/75">
+                  {budgetStorageNotice}
+                </p>
+              </aside>
+            )}
+
+            {transactionStorageNotice && (
+              <aside
+                role="status"
+                className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-amber-200">
+                  Transaction storage notice
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-amber-100/75">
+                  {transactionStorageNotice}
+                </p>
+              </aside>
+            )}
 
             <div className="mt-8">
               <BudgetSummary
                 summary={summary}
               />
             </div>
+
+            <BudgetVsActual
+              insight={budgetActualInsight}
+            />
 
             <section
               aria-labelledby="category-budgets-title"
