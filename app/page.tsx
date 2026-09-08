@@ -25,6 +25,7 @@ import CashflowChart from "@/components/dashboard/CashflowChart";
 import DashboardPanel from "@/components/dashboard/DashboardPanel";
 import DashboardCustomizer from "@/components/dashboard/DashboardCustomizer";
 import DashboardOverviewHero from "@/components/dashboard/DashboardOverviewHero";
+import DashboardFinancialOverview from "@/components/dashboard/DashboardFinancialOverview";
 import DashboardSectionHeader from "@/components/dashboard/DashboardSectionHeader";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import ExpandedStatCard from "@/components/dashboard/ExpandedStatCard";
@@ -41,8 +42,10 @@ import { formatBudgetMonth } from "@/lib/budget-month";
 import { readStoredBudgets } from "@/lib/budget-storage";
 import { readStoredGoals } from "@/lib/goal-storage";
 import { readStoredAccounts } from "@/lib/account-storage";
-import { calculateCashflowForecast } from "@/lib/cashflow-forecast";
+import { calculateCashflowForecastAnalysis } from "@/lib/cashflow-forecast-analysis";
 import { calculateFinancialHealth } from "@/lib/financial-health";
+import { calculateBudgetActualInsight } from "@/lib/budget-actual";
+import { calculateDashboardFinancialOverview } from "@/lib/dashboard-financial-overview";
 import { readStoredInvestments } from "@/lib/investment-storage";
 import { calculateFinancialOverview } from "@/lib/net-worth";
 import { calculateNetWorthHistorySummary } from "@/lib/net-worth-history";
@@ -285,15 +288,54 @@ export default function Home() {
     []
   );
 
-  const cashflowForecast = useMemo(
+  const cashflowForecastAnalysis = useMemo(
     () =>
-      calculateCashflowForecast(
+      calculateCashflowForecastAnalysis(
         accounts,
         recurringItems,
         forecastStartDate,
         forecastEndDate
       ),
     [accounts, recurringItems, forecastStartDate, forecastEndDate]
+  );
+
+  const cashflowForecast =
+    cashflowForecastAnalysis.forecast;
+
+  const budgetActualInsight = useMemo(
+    () =>
+      calculateBudgetActualInsight(
+        budgets,
+        transactions,
+        currentBudgetMonth
+      ),
+    [budgets, transactions, currentBudgetMonth]
+  );
+
+  const dashboardFinancialOverview = useMemo(
+    () =>
+      calculateDashboardFinancialOverview({
+        accounts,
+        recurringItems,
+        netWorthMinor,
+        monthlyIncomeMinor,
+        monthlyExpensesMinor,
+        monthlySurplusMinor,
+        budgetActual:
+          budgetActualInsight,
+        forecastAnalysis:
+          cashflowForecastAnalysis,
+      }),
+    [
+      accounts,
+      recurringItems,
+      netWorthMinor,
+      monthlyIncomeMinor,
+      monthlyExpensesMinor,
+      monthlySurplusMinor,
+      budgetActualInsight,
+      cashflowForecastAnalysis,
+    ]
   );
 
   const smartInsights = useMemo(
@@ -790,6 +832,14 @@ export default function Home() {
           >
             {storageNotice}
           </div>
+        )}
+
+        {mounted && (
+          <DashboardFinancialOverview
+            overview={
+              dashboardFinancialOverview
+            }
+          />
         )}
 
         {mounted && (
